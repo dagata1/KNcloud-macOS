@@ -57,7 +57,7 @@ func main() {
 		Height:    height,
 		MinWidth:  380,
 		MinHeight: 480,
-		Frameless: true, // 与 Windows 版相同的自绘标题栏（最小化 / 最大化 / 关闭按钮在右上角）
+		Frameless: false, // 使用 macOS 原生窗口：系统红绿灯、圆角、描边与阴影；标题栏隐藏、内容铺满
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -80,6 +80,7 @@ func main() {
 		},
 		Mac: &mac.Options{
 			Appearance:           mac.DefaultAppearance,
+			TitleBar:             mac.TitleBarHidden(),
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  false,
 			About: &mac.AboutInfo{
