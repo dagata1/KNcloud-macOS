@@ -1451,6 +1451,25 @@ export default function App() {
 
 
   // Mac 无侧边栏：子页面顶部「‹ 仪表盘」返回；设置页内用分段切换 通用 / 路由分流 / 运行日志
+  // 模式切换 / 设置 / 主题 三个图标：Windows 在标题栏右侧，Mac 放到「运行状态概览」标题行右侧
+  const renderHeaderIcons = () => (
+    <>
+      <button className="theme-toggle-btn" onClick={handleUiModeToggle} title="切换到简易模式（点击即用）">
+        <LayoutGrid size={15} />
+      </button>
+      {isMac && (
+        <button
+          className={`theme-toggle-btn${['settings', 'routing', 'logs'].includes(activeTab) ? ' active' : ''}`}
+          onClick={() => setActiveTab(['settings', 'routing', 'logs'].includes(activeTab) ? 'dashboard' : 'settings')}
+          title="设置"
+        >
+          <Settings size={15} />
+        </button>
+      )}
+      {renderThemeMenu()}
+    </>
+  );
+
   const macPageNav = (withTabs) => !isMac ? null : (
     <div className="mac-page-nav">
       <button className="mac-back-btn" onClick={() => setActiveTab('dashboard')} title="返回仪表盘">
@@ -1479,19 +1498,7 @@ export default function App() {
 
 
         <div className="titlebar-right no-drag">
-          <button className="theme-toggle-btn" onClick={handleUiModeToggle} title="切换到简易模式（点击即用）">
-            <LayoutGrid size={15} />
-          </button>
-          {isMac && (
-            <button
-              className={`theme-toggle-btn${['settings', 'routing', 'logs'].includes(activeTab) ? ' active' : ''}`}
-              onClick={() => setActiveTab(['settings', 'routing', 'logs'].includes(activeTab) ? 'dashboard' : 'settings')}
-              title="设置"
-            >
-              <Settings size={15} />
-            </button>
-          )}
-          {renderThemeMenu()}
+          {!isMac && renderHeaderIcons()}
           <button className="win-caption-btn" onClick={() => WindowMin()} title="最小化">
             <Minus size={13} />
           </button>
@@ -1575,6 +1582,7 @@ export default function App() {
                   <span className="core-dot" aria-hidden="true" />
                   <span className="core-label" title={status.coreError || ''}>{coreStateLabel}</span>
                 </div>
+                {isMac && <div className="mac-header-icons no-drag">{renderHeaderIcons()}</div>}
                 </div>
               </div>
 
