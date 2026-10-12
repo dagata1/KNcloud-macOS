@@ -1860,3 +1860,26 @@ select.win11-input option {
   font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .platform-mac .acct-meta { margin-top: 10px; }
+
+/* Mac 仪表盘模式卡：沿用 Windows 版滑块 + 蓝色指示条（覆盖上面的原生分段样式），按钮加高填满卡片，并收窄与网速卡的行距 */
+.platform-mac .acct-split { row-gap: 10px; }
+.platform-mac .acct-split > .acct-mode { padding: 5px; }
+.platform-mac .acct-split > .acct-mode .mode-switch.mode-switch-full { padding: 0; gap: 4px; background: transparent; border-radius: var(--radius-sm); }
+.platform-mac .acct-split > .acct-mode .mode-switch.mode-switch-full .segment-indicator {
+  top: 0; bottom: 0; left: 0; width: calc((100% - 3 * 4px) / 4);
+  border-radius: var(--radius-sm); background: var(--bg-card-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), inset 0 0 0 1px var(--border-subtle);
+}
+.platform-mac .acct-split > .acct-mode .mode-switch .segment-indicator::after { display: block; bottom: 4px; }
+.platform-mac .acct-split > .acct-mode .mode-switch.mode-switch-full .segment-btn { min-height: 42px; font-size: 13.5px; font-weight: 600; }
+
+/* Mac 窗口边缘：仿 macOS 原生大圆角 + 发丝描边（外圈深色细线、内圈高光） */
+.app-window.platform-mac {
+  border-radius: 22px;
+  border: 0.5px solid rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.55);
+}
+.app-window.platform-mac.dark-theme {
+  border-color: rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.16);
+}
