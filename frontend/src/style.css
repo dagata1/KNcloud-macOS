@@ -1807,7 +1807,7 @@ select.win11-input option {
 .platform-mac .content-surface { padding: 22px 40px 28px; }
 .platform-mac .content-header { margin-bottom: 12px; }
 .platform-mac .content-title { font-size: 17px; }
-.platform-mac .win11-card { padding: 16px; }
+.platform-mac .win11-card { padding: 12px; }
 .platform-mac .dash-stack { gap: 12px !important; }
 .platform-mac .acct-split { gap: 12px; }
 .platform-mac .acct-left { padding: 10px 14px 12px; gap: 8px; }
@@ -1895,3 +1895,5 @@ select.win11-input option {
 /* Mac：模式切换 / 设置 / 主题图标放在「运行状态概览」行右侧 */
 .mac-header-icons { display: flex; align-items: center; gap: 2px; padding-left: 12px; border-left: 1px solid var(--border-default); }
 .mac-header-icons .theme-toggle-btn { width: 30px; height: 30px; }
+/* Mac：仪表盘标题位置改为 KNcloud Logo（标题栏不再重复显示） */
+.mac-dash-logo { height: 26px; width: auto; display: block; }

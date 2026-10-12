@@ -1492,7 +1492,7 @@ export default function App() {
       {/* Windows 11 TitleBar */}
       <header className="titlebar drag-region">
         <div className="titlebar-left">
-          <img src={brandLogo} alt={productName} style={{ height: "22px", width: "auto", display: "block" }} />
+          {!isMac && <img src={brandLogo} alt={productName} style={{ height: "22px", width: "auto", display: "block" }} />}
         </div>
 
 
@@ -1575,7 +1575,9 @@ export default function App() {
             <div className="dash-stack" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div className="content-header">
                 <div>
-                  <h1 className="content-title">运行状态概览</h1>
+                  {isMac
+                    ? <img className="mac-dash-logo" src={brandLogo} alt={productName} />
+                    : <h1 className="content-title">运行状态概览</h1>}
                 </div>
                 <div className="content-header-right">
                 <div className={`core-status core-${coreState}`}>
