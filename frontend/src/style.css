@@ -1817,8 +1817,8 @@ select.win11-input option {
 .platform-mac .acct-action { height: 28px; padding: 0 8px; }
 .platform-mac .acct-speed { margin: 4px 0 2px; font-size: 19px; }
 .platform-mac .qp-header { margin-bottom: 8px; }
-/* 节点卡片保持原尺寸（78px 高、原内边距与字号），Mac 只固定为 4 列 */
-.platform-mac .qp-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* 节点卡片保持原尺寸（78px 高、原内边距与字号），列数同 Windows：每列至少 176px 自动排 */
+.platform-mac .qp-grid { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); }
 .platform-mac .qp-tile { padding-left: 12px; padding-right: 10px; }
 .platform-mac .qp-top { gap: 8px; }
 .platform-mac .qp-name { font-size: 13px; letter-spacing: -0.1px; }
@@ -1897,3 +1897,11 @@ select.win11-input option {
 .mac-header-icons .theme-toggle-btn { width: 30px; height: 30px; }
 /* Mac：仪表盘标题位置改为 KNcloud Logo（标题栏不再重复显示） */
 .mac-dash-logo { height: 26px; width: auto; display: block; }
+
+/* Mac：内容区最大宽度，宽窗口时居中 */
+.platform-mac .content-surface > * {
+  width: 100%;
+  max-width: 1000px; /* 与 Windows 窗口内容区宽度一致 */
+  margin-left: auto;
+  margin-right: auto;
+}
