@@ -1879,3 +1879,16 @@ select.win11-input option {
 .platform-mac .win-caption-btn { display: none; }
 .platform-mac .titlebar-right { padding-right: 6px; }
 .platform-mac .theme-toggle-btn { width: 32px; border-radius: 6px; height: 24px; }
+
+/* Mac 无侧边栏导航：设置入口在右上角齿轮；子页面顶部返回 + 设置分段 */
+.platform-mac .theme-toggle-btn.active { color: var(--accent); }
+.mac-page-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: -4px; }
+.mac-back-btn { display: inline-flex; align-items: center; gap: 2px; padding: 4px 8px 4px 2px; border: none; border-radius: 6px; background: transparent; color: var(--accent); font-size: 13px; font-weight: 500; cursor: pointer; }
+.mac-back-btn:hover { background: rgba(128, 128, 128, 0.12); }
+.mac-sub-tabs { padding: 2px; border-radius: 7px; }
+.mac-sub-tabs .segment-btn { min-height: 26px; padding: 0 14px; font-size: 12.5px; border-radius: 5px; }
+.qp-more-btn { height: 30px; padding: 0 8px 0 12px; gap: 2px; font-size: 12.5px; }
+.platform-mac .theme-menu-wrap { display: flex; align-items: center; height: 100%; }
+/* Mac 原生窗口下不透出桌面：窗口底色改为不透明，不要毛玻璃 */
+.app-window.platform-mac { background-color: #f3f3f3; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.app-window.platform-mac.dark-theme { background-color: #202020; }

@@ -42,6 +42,8 @@ import {
   Gauge,
   LogOut,
   CircleHelp,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 import {
@@ -82,7 +84,7 @@ import {
   WindowClose,
   GetPlatform
 } from '../wailsjs/go/main/App';
-import { EventsOn, WindowSetSize, WindowUnmaximise, BrowserOpenURL } from '../wailsjs/runtime';
+import { EventsOn, WindowSetSize, WindowUnmaximise, BrowserOpenURL, WindowGetSize, WindowGetPosition, WindowSetPosition } from '../wailsjs/runtime';
 
 const protoLabel = (n) => (n.protocol === 'HTTP' && n.security === 'tls') ? 'HTTPS' : n.protocol;
 
@@ -95,11 +97,19 @@ export default function App() {
   // 简易模式内容少，窗口切到紧凑尺寸；普通模式恢复默认大小
   // （全局最小尺寸在 main.go 里放开了到 380x560，这里的目标值在其之上）
   const WINDOW_SIZE = { simple: { w: 420, h: 640 }, classic: isMac ? { w: 920, h: 580 } : { w: 1120, h: 760 } };
-  const applyWindowSize = async (mode) => {
+  const applyWindowSize = async (mode, keepCenter = false) => {
     const s = WINDOW_SIZE[mode] || WINDOW_SIZE.classic;
     // 窗口处于最大化时 SetSize 不生效，会一直停在大尺寸；先还原成普通窗口
     try { await WindowUnmaximise(); } catch (e) { /* 未最大化时忽略 */ }
+    // Mac 切换简易 / 普通模式：以窗口中心为固定点缩放，而不是固定某个角
+    let before = null;
+    if (keepCenter && isMac) {
+      try { before = { ...(await WindowGetPosition()), ...(await WindowGetSize()) }; } catch (e) { before = null; }
+    }
     WindowSetSize(s.w, s.h);
+    if (before && before.w && before.h) {
+      WindowSetPosition(Math.round(before.x + (before.w - s.w) / 2), Math.round(before.y + (before.h - s.h) / 2));
+    }
   };
 
   // 节点延迟的展示文字与配色（简易模式节点下拉用）
@@ -419,7 +429,7 @@ export default function App() {
   const handleUiModeToggle = async () => {
     const next = uiMode === 'classic' ? 'simple' : 'classic';
     setUiMode(next);
-    applyWindowSize(next);
+    applyWindowSize(next, true);
     try {
       await SaveSettings({ ...settings, uiMode: next });
       setLocalSettings(prev => ({ ...prev, uiMode: next }));
@@ -1440,6 +1450,23 @@ export default function App() {
   );
 
 
+  // Mac 无侧边栏：子页面顶部「‹ 仪表盘」返回；设置页内用分段切换 通用 / 路由分流 / 运行日志
+  const macPageNav = (withTabs) => !isMac ? null : (
+    <div className="mac-page-nav">
+      <button className="mac-back-btn" onClick={() => setActiveTab('dashboard')} title="返回仪表盘">
+        <ChevronLeft size={16} />
+        <span>仪表盘</span>
+      </button>
+      {withTabs && (
+        <div className="segmented-control mac-sub-tabs">
+          {[['settings', '通用'], ['routing', '路由分流'], ['logs', '运行日志']].map(([id, label]) => (
+            <button key={id} className={`segment-btn ${activeTab === id ? 'active' : ''}`} onClick={() => setActiveTab(id)}>{label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className={`app-window ${theme === 'dark' ? 'dark-theme' : ''}${isMac ? ' platform-mac' : ''}`}>
       {renderToasts()}
@@ -1455,6 +1482,15 @@ export default function App() {
           <button className="theme-toggle-btn" onClick={handleUiModeToggle} title="切换到简易模式（点击即用）">
             <LayoutGrid size={15} />
           </button>
+          {isMac && (
+            <button
+              className={`theme-toggle-btn${['settings', 'routing', 'logs'].includes(activeTab) ? ' active' : ''}`}
+              onClick={() => setActiveTab(['settings', 'routing', 'logs'].includes(activeTab) ? 'dashboard' : 'settings')}
+              title="设置"
+            >
+              <Settings size={15} />
+            </button>
+          )}
           {renderThemeMenu()}
           <button className="win-caption-btn" onClick={() => WindowMin()} title="最小化">
             <Minus size={13} />
@@ -1471,7 +1507,7 @@ export default function App() {
       {/* Main Body */}
       <div className="app-body">
         {/* Left Windows 11 Navigation Bar */}
-        <nav className={`nav-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        {!isMac && (<nav className={`nav-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <div className="nav-top-actions">
             <button
               className="hamburger-btn"
@@ -1523,7 +1559,7 @@ export default function App() {
               {!sidebarCollapsed && <span>首选项设置</span>}
             </button>
           </div>
-        </nav>
+        </nav>)}
 
         {/* Right Main Content */}
         <main className="content-surface">
@@ -1666,6 +1702,12 @@ export default function App() {
                     )}
                   </div>
                   <div className="qp-actions">
+                    {isMac && (
+                      <button className="win11-btn qp-more-btn" onClick={() => setActiveTab('servers')} title="管理全部节点">
+                        <span>全部节点</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    )}
                     <button
                       className="win11-btn qp-icon-btn"
                       onClick={handleRetestAll}
@@ -1721,6 +1763,7 @@ export default function App() {
           {/* TAB 2: SERVERS (NODES) */}
           {activeTab === 'servers' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {macPageNav(false)}
               <div className="content-header" style={{ marginBottom: '4px', alignItems: 'center', gap: '16px' }}>
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <h1 className="content-title" style={{ margin: 0 }}>节点列表</h1>
@@ -1918,6 +1961,7 @@ export default function App() {
           {/* TAB 3: ROUTING */}
           {activeTab === 'routing' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {macPageNav(true)}
               <div className="content-header">
                 <div>
                   <h1 className="content-title">路由与分流规则</h1>
@@ -2007,6 +2051,7 @@ export default function App() {
           {/* TAB 5: LOGS */}
           {activeTab === 'logs' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+              {macPageNav(true)}
               <div className="content-header" style={{ marginBottom: 0 }}>
                 <div>
                   <h1 className="content-title">实时运行日志</h1>
@@ -2045,6 +2090,7 @@ export default function App() {
           {/* TAB 6: SETTINGS */}
           {activeTab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {macPageNav(true)}
               <div className="content-header">
                 <div>
                   <h1 className="content-title">首选项设置</h1>
