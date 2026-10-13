@@ -1905,3 +1905,14 @@ select.win11-input option {
   margin-left: auto;
   margin-right: auto;
 }
+
+/* Mac 简易模式：与普通模式统一，标题栏只留红绿灯，Logo 和右上按钮下移到内容顶部一行 */
+.mac-simple-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 22px 0; }
+.mac-simple-header .mac-header-icons { border-left: none; padding-left: 0; }
+.platform-mac .simple-body { padding: 8px 24px 20px; gap: 8px; }
+/* Mac 简易模式：下方元素间距收紧，整体更紧凑 */
+.platform-mac .simple-power-btn { width: 136px; height: 136px; }
+.platform-mac .simple-status-text { font-size: 20px; margin-top: 6px; }
+.platform-mac .simple-node-area { margin-top: 8px; gap: 5px; }
+.platform-mac .simple-account { margin-top: 8px; padding: 10px 14px; gap: 6px; }
+.platform-mac .simple-account-actions { margin-top: 4px; }

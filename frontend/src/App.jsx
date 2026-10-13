@@ -1257,13 +1257,15 @@ export default function App() {
       <div className={`app-window ${theme === 'dark' ? 'dark-theme' : ''}${isMac ? ' platform-mac' : ''}`}>
         <header className="titlebar drag-region">
           <div className="titlebar-left">
-            <img src={brandLogo} alt={productName} style={{ height: "22px", width: "auto", display: "block" }} />
+            {!isMac && <img src={brandLogo} alt={productName} style={{ height: "22px", width: "auto", display: "block" }} />}
           </div>
           <div className="titlebar-right no-drag">
-            <button className="theme-toggle-btn" onClick={handleUiModeToggle} title="切换到普通模式（完整设置）">
-              <SlidersHorizontal size={15} />
-            </button>
-            {renderThemeMenu()}
+            {!isMac && (
+              <button className="theme-toggle-btn" onClick={handleUiModeToggle} title="切换到普通模式（完整设置）">
+                <SlidersHorizontal size={15} />
+              </button>
+            )}
+            {!isMac && renderThemeMenu()}
             <button className="win-caption-btn" onClick={() => WindowMin()} title="最小化">
               <Minus size={13} />
             </button>
@@ -1277,6 +1279,17 @@ export default function App() {
         </header>
 
         {renderToasts()}
+        {isMac && (
+          <div className="mac-simple-header">
+            <img className="mac-dash-logo" src={brandLogo} alt={productName} />
+            <div className="mac-header-icons no-drag">
+              <button className="theme-toggle-btn" onClick={handleUiModeToggle} title="切换到普通模式（完整设置）">
+                <SlidersHorizontal size={15} />
+              </button>
+              {renderThemeMenu()}
+            </div>
+          </div>
+        )}
         <div className="simple-body">
           <button
             className={[
