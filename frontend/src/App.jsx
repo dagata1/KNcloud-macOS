@@ -88,6 +88,18 @@ import { EventsOn, WindowSetSize, WindowUnmaximise, BrowserOpenURL, WindowGetSiz
 
 const protoLabel = (n) => (n.protocol === 'HTTP' && n.security === 'tls') ? 'HTTPS' : n.protocol;
 
+
+const CLOUD_PATH = 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z';
+// 简易模式的云形图标：连接中沿轮廓流光描线，已连接时完整点亮
+function SimpleCloudIcon() {
+  return (
+    <svg className="simple-cloud" viewBox="0 0 24 24" aria-hidden="true">
+      <path className="cloud-base" d={CLOUD_PATH} />
+      <path className="cloud-draw" d={CLOUD_PATH} pathLength="74" />
+    </svg>
+  );
+}
+
 export default function App() {
   // 运行平台（Go 端 GetPlatform）：macOS 上替换 Windows 专属文案（托盘、管理员、开机自启）
   const [platform, setPlatform] = useState('windows');
@@ -1301,8 +1313,8 @@ export default function App() {
             onClick={handleSimpleConnect}
             title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
           >
-            {simpleOn && simpleNet === 'checking'
-              ? <LoaderCircle size={56} className="spin" />
+            {simpleOn && (simpleNet === 'checking' || simpleNet === 'ok')
+              ? <SimpleCloudIcon />
               : <Power size={56} />}
           </button>
 
