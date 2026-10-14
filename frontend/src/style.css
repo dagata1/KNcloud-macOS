@@ -1,5 +1,9 @@
 :root {
   color-scheme: light;
+  --simple-ok: #107c41;
+  --simple-ok-border: rgba(16, 124, 65, 0.5);
+  --simple-ok-subtle: rgba(16, 124, 65, 0.1);
+  --simple-ok-glow: rgba(16, 124, 65, 0.3);
   --bg-canvas: #f3f3f3;
   --bg-solid: #f9f9f9;
   --bg-mica: rgba(243, 243, 243, 0.85);
@@ -28,6 +32,10 @@
 
 .dark-theme {
   color-scheme: dark;
+  --simple-ok: #3ddc84;
+  --simple-ok-border: rgba(61, 220, 132, 0.45);
+  --simple-ok-subtle: rgba(61, 220, 132, 0.08);
+  --simple-ok-glow: rgba(61, 220, 132, 0.28);
   --bg-canvas: #202020;
   --bg-solid: #2b2b2b;
   --bg-mica: rgba(32, 32, 32, 0.92);
@@ -785,12 +793,12 @@ select.win11-input option {
   color: var(--accent);
 }
 
+/* 已连接：云图标完整点亮为绿色 + 绿色呼吸光晕 */
 .simple-power-btn.connected {
-  border-color: #107c41;
-  color: #107c41;
-  background: rgba(16, 124, 65, 0.12);
-  box-shadow: 0 0 46px rgba(16, 124, 65, 0.35);
-  animation: simple-pop 0.35s ease;
+  border-color: var(--simple-ok-border);
+  color: var(--simple-ok);
+  background: var(--simple-ok-subtle);
+  animation: simple-pop 0.35s ease, simple-halo-ok 2.4s ease-in-out 0.35s infinite;
 }
 
 /* 连接成功瞬间的弹跳（connected class 挂上时播放一次） */
@@ -800,34 +808,51 @@ select.win11-input option {
   100% { transform: scale(1); }
 }
 
-/* 连接中：主题色呼吸光晕 + 外圈旋转扫描光环 */
+/* 连接中：云形描线 —— 一段光束沿云朵轮廓流动 + 主题色光晕呼吸 */
 .simple-power-btn.connecting {
-  position: relative;
-  border-color: var(--accent);
+  border-color: var(--accent-border);
   color: var(--accent);
   background: var(--accent-subtle);
-  animation: simple-breathe 1.6s ease-in-out infinite;
+  animation: simple-halo 2s ease-in-out infinite;
 }
 
-.simple-power-btn.connecting::after {
-  content: '';
-  position: absolute;
-  inset: -11px;
-  border-radius: 50%;
-  border: 3px solid transparent;
-  border-top-color: var(--accent);
-  border-right-color: var(--accent);
-  opacity: 0.85;
-  animation: simple-spin 0.9s linear infinite;
+.simple-cloud {
+  width: 72px;
+  height: 72px;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+.simple-cloud .cloud-base {
+  stroke: currentColor;
+  stroke-width: 1.6;
+  opacity: 0.18;
+}
+.simple-cloud .cloud-draw {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 14 60;
+  filter: drop-shadow(0 0 4px currentColor);
+  animation: simple-cloud-draw 1.6s linear infinite;
+}
+/* 已连接：轮廓完整点亮，不再流动 */
+.simple-power-btn.connected .simple-cloud .cloud-base { opacity: 0; }
+.simple-power-btn.connected .simple-cloud .cloud-draw {
+  stroke-dasharray: none;
+  animation: none;
 }
 
-@keyframes simple-spin {
-  to { transform: rotate(360deg); }
+@keyframes simple-cloud-draw {
+  to { stroke-dashoffset: -74; }
 }
-
-@keyframes simple-breathe {
-  0%, 100% { box-shadow: 0 0 0 0 var(--accent-subtle); }
-  50% { box-shadow: 0 0 48px 6px var(--accent-subtle); }
+@keyframes simple-halo {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 44px 4px var(--accent-subtle), 0 0 0 6px var(--accent-subtle); }
+}
+@keyframes simple-halo-ok {
+  0%, 100% { box-shadow: 0 0 28px 0 var(--simple-ok-glow); }
+  50% { box-shadow: 0 0 52px 6px var(--simple-ok-glow), 0 0 0 6px var(--simple-ok-subtle); }
 }
 
 .simple-power-btn.failed {
@@ -1227,9 +1252,10 @@ select.win11-input option {
      注意 animation-name 必须显式写：inherit 会取父元素的值，
      父元素没设 animation-name 时动画会直接失效。 */
   .spin { animation: spin-anim 1s linear infinite !important; }
-  .simple-power-btn.connecting::after { animation: simple-spin 0.9s linear infinite !important; }
+  .simple-power-btn.connecting { animation: simple-halo 2s ease-in-out infinite !important; }
+  .simple-power-btn.connecting .simple-cloud .cloud-draw { animation: simple-cloud-draw 1.6s linear infinite !important; }
   .simple-status-text.checking { animation: status-blink 1.2s ease-in-out infinite !important; }
-  .simple-power-btn.connected { animation: simple-breathe 1.6s ease-in-out infinite !important; }
+  .simple-power-btn.connected { animation: simple-halo-ok 2.4s ease-in-out infinite !important; }
 
   /* 一次性入场动画：走完即到最终状态，用极短时长即可 */
   .simple-node-menu { animation: simple-pop 0.001s ease !important; }
@@ -1239,17 +1265,21 @@ select.win11-input option {
   /* 覆盖原有的具名关键帧：prefers-reduced-motion 下浏览器会改写关键帧取值，
      这里按原定义重新声明一遍，确保动画真的循环执行（取值与上方原定义一致，
      避免动画跳变）。 */
-  @keyframes simple-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  @keyframes simple-cloud-draw {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: -74; }
+  }
+  @keyframes simple-halo {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    50% { box-shadow: 0 0 44px 4px var(--accent-subtle), 0 0 0 6px var(--accent-subtle); }
+  }
+  @keyframes simple-halo-ok {
+    0%, 100% { box-shadow: 0 0 28px 0 var(--simple-ok-glow); }
+    50% { box-shadow: 0 0 52px 6px var(--simple-ok-glow), 0 0 0 6px var(--simple-ok-subtle); }
   }
   @keyframes spin-anim {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
-  }
-  @keyframes simple-breathe {
-    0%, 100% { box-shadow: 0 0 0 0 var(--accent-subtle); }
-    50% { box-shadow: 0 0 48px 6px var(--accent-subtle); }
   }
   @keyframes status-blink {
     0%, 100% { opacity: 1; }
