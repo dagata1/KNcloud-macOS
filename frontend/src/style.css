@@ -1142,7 +1142,9 @@ select.win11-input option {
 .simple-account {
   margin-top: 16px;
   width: 380px;
-  max-width: 82%;
+  /* 窄窗口下尽量占满可用宽度，不再按 82% 缩得过窄 */
+  max-width: 100%;
+  container-type: inline-size;
   padding: 12px 14px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
@@ -1175,6 +1177,21 @@ select.win11-input option {
   height: 30px;
   font-size: 12px;
   padding: 0 10px;
+  /* 三个按钮等分一行，文字永不换行；放不下时先收图标，再省略号 */
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+.simple-account-actions .win11-btn > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@container (max-width: 320px) {
+  .simple-account-actions { gap: 6px; }
+  .simple-account-actions .win11-btn { padding: 0 6px; gap: 4px; }
+}
+@container (max-width: 280px) {
+  .simple-account-actions .win11-btn > svg { display: none; }
 }
 
 .simple-account-bar,
