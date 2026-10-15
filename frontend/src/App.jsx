@@ -1747,7 +1747,7 @@ export default function App() {
                       disabled={pingInProgress || nodes.length === 0}
                       title="重新测速全部节点"
                     >
-                      <RefreshCw size={13} className={pingInProgress ? 'spin' : ''} />
+                      <Gauge size={14} />
                     </button>
                   </div>
                 </div>
