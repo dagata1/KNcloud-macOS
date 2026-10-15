@@ -843,6 +843,17 @@ select.win11-input option {
   animation: none;
 }
 
+/* 断开 / 失败：静态完整云形轮廓，跟随按钮文字色（断开为灰色，悬停为主题色，失败为红色），无流光 */
+.simple-power-btn:not(.connecting) .simple-cloud .cloud-base { opacity: 0; }
+.simple-power-btn:not(.connecting) .simple-cloud .cloud-draw {
+  stroke-dasharray: none;
+  animation: none;
+}
+.simple-power-btn:not(.connecting):not(.connected) .simple-cloud .cloud-draw {
+  stroke-width: 1.8;
+  filter: none;
+}
+
 @keyframes simple-cloud-draw {
   to { stroke-dashoffset: -74; }
 }
