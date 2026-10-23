@@ -1972,3 +1972,9 @@ select.win11-input option {
 .platform-mac .simple-node-area { margin-top: 8px; gap: 5px; }
 .platform-mac .simple-account { margin-top: 8px; padding: 10px 14px; gap: 6px; }
 .platform-mac .simple-account-actions { margin-top: 4px; }
+
+/* 仪表盘铺满内容区：节点多时只在「节点选择」框内滚动，整页不滚动。
+   窗口矮到放不下节点框最小高度时，才退回整页滚动。 */
+.content-surface > .dash-fill { flex: 1 1 0; min-height: 0; }
+.dash-fill > .qp-card { flex: 0 1 auto; min-height: 200px; display: flex; flex-direction: column; }
+.dash-fill > .qp-card > .qp-grid { flex: 1 1 auto; min-height: 0; max-height: none; align-content: start; }
