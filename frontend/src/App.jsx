@@ -1595,7 +1595,7 @@ export default function App() {
         <main className="content-surface">
           {/* TAB 1: DASHBOARD */}
           {activeTab === 'dashboard' && (
-            <div className="dash-stack" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="dash-stack dash-fill" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div className="content-header">
                 <div>
                   {isMac
@@ -1724,7 +1724,7 @@ export default function App() {
               )}
 
               {/* Quick Node Switcher in Dashboard：全部节点紧凑网格，点击即切换 */}
-              <div className="win11-card">
+              <div className="win11-card qp-card">
                 <div className="qp-header">
                   <div className="qp-title">
                     <h3>节点选择</h3>
