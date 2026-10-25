@@ -43,6 +43,12 @@ import {
   CircleHelp,
   ChevronLeft,
   ChevronRight,
+  Plug,
+  Wifi,
+  Cpu,
+  Layers,
+  Power,
+  Info,
 } from 'lucide-react';
 
 import {
@@ -98,6 +104,9 @@ function SimpleCloudIcon() {
     </svg>
   );
 }
+
+const PREF_KEYS = ['socksPort', 'httpPort', 'allowLan', 'muxEnabled', 'coreType', 'dnsServers', 'autoStart', 'minimizeToTray', 'subUpdateHours'];
+const prefSig = (s) => JSON.stringify(PREF_KEYS.map(k => (s || {})[k] ?? null));
 
 export default function App() {
   // 运行平台（Go 端 GetPlatform）：macOS 上替换 Windows 专属文案（托盘、管理员、开机自启）
@@ -212,6 +221,10 @@ export default function App() {
     minimizeToTray: true,
     subUpdateHours: 0
   });
+
+  // 首选项「未保存」检测：只比较设置页可编辑的字段
+  const [prefsBaseline, setPrefsBaseline] = useState('');
+  const [settingsScrolled, setSettingsScrolled] = useState(false);
 
   // Modals
   const [showAddNodeModal, setShowAddNodeModal] = useState(false);
@@ -353,6 +366,7 @@ export default function App() {
       if (curAccount) setAccount(curAccount);
       if (curSettings) {
         setLocalSettings(curSettings);
+        setPrefsBaseline(prefSig(curSettings));
         if (curSettings.theme === 'light' || curSettings.theme === 'dark' || curSettings.theme === 'system') setThemePref(curSettings.theme);
         // 按持久化的模式 + 登录态统一决定窗口尺寸：
         //   未登录 → 登录页紧凑尺寸；已登录 → 简洁模式紧凑尺寸 / 普通模式默认尺寸
@@ -1093,6 +1107,7 @@ export default function App() {
 
   const handleSaveSettings = async () => {
     await SaveSettings(settings);
+    setPrefsBaseline(prefSig(settings));
     showToast('首选项已成功保存！', 'success');
   };
 
@@ -1493,8 +1508,53 @@ export default function App() {
     </>
   );
 
-  const macPageNav = (withTabs) => !isMac ? null : (
-    <div className="mac-page-nav">
+  const prefsDirty = prefsBaseline !== '' && prefSig(settings) !== prefsBaseline;
+  // 设置页一行：左侧图标 + 标题/说明（可带错误提示），右侧控件。普通函数而非组件，避免输入框重挂载丢焦点
+  const prefRow = (icon, title, desc, control, error) => (
+    <div className="prefs-row" key={title}>
+      <div className="prefs-row-icon">{icon}</div>
+      <div className="prefs-row-text">
+        <div className="prefs-row-title">{title}</div>
+        {desc && <div className="prefs-row-desc">{desc}</div>}
+        {error && <div className="prefs-row-error">{error}</div>}
+      </div>
+      <div className="prefs-row-control">{control}</div>
+    </div>
+  );
+  const prefToggle = (key) => (
+    <label className="win11-toggle">
+      <input
+        type="checkbox"
+        checked={!!settings[key]}
+        onChange={e => setLocalSettings({ ...settings, [key]: e.target.checked })}
+      />
+      <span className="toggle-track"><span className="toggle-thumb" /></span>
+    </label>
+  );
+  const settingsActions = (
+    <>
+      {prefsDirty && <span className="settings-dirty"><span className="settings-dirty-dot" />有未保存的更改</span>}
+      <button className={`win11-btn ${prefsDirty ? 'primary' : ''}`} onClick={handleSaveSettings}>
+        <Check size={14} />
+        <span>保存设置</span>
+      </button>
+    </>
+  );
+  const logsActions = (
+    <>
+      <button className="win11-btn" onClick={() => ClearLogs()}>
+        <Trash2 size={13} />
+        <span>清空日志</span>
+      </button>
+      <button className="win11-btn primary" onClick={() => refreshAllData()}>
+        <RefreshCw size={13} />
+        <span>刷新</span>
+      </button>
+    </>
+  );
+  // 子页面顶栏（吸顶，不随内容滚走）：返回 / 设置分段 / 当前页操作
+  const macPageNav = (withTabs, actions) => !isMac ? null : (
+    <div className={`mac-page-nav ${withTabs ? 'is-sticky' : ''} ${settingsScrolled ? 'scrolled' : ''}`}>
       <button className="mac-back-btn" onClick={() => setActiveTab('dashboard')} title="返回仪表盘">
         <ChevronLeft size={16} />
         <span>仪表盘</span>
@@ -1506,6 +1566,7 @@ export default function App() {
           ))}
         </div>
       )}
+      {actions && <div className="settings-topbar-actions">{actions}</div>}
     </div>
   );
 
@@ -1592,7 +1653,7 @@ export default function App() {
         </nav>)}
 
         {/* Right Main Content */}
-        <main className="content-surface">
+        <main className="content-surface" onScroll={e => { const sc = e.currentTarget.scrollTop > 2; if (sc !== settingsScrolled) setSettingsScrolled(sc); }}>
           {/* TAB 1: DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="dash-stack dash-fill" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -2084,21 +2145,11 @@ export default function App() {
           {/* TAB 5: LOGS */}
           {activeTab === 'logs' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
-              {macPageNav(true)}
+              {macPageNav(true, logsActions)}
               <div className="content-header" style={{ marginBottom: 0 }}>
                 <div>
                   <h1 className="content-title">实时运行日志</h1>
                   <p className="content-subtitle">查看代理核心的连接追踪、分流判定与警告异常</p>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="win11-btn" onClick={() => ClearLogs()}>
-                    <Trash2 size={13} />
-                    <span>清空日志</span>
-                  </button>
-                  <button className="win11-btn primary" onClick={() => refreshAllData()}>
-                    <RefreshCw size={13} />
-                    <span>刷新</span>
-                  </button>
                 </div>
               </div>
 
@@ -2120,218 +2171,138 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 6: SETTINGS */}
+          {/* TAB 6: SETTINGS（Win11 设置式分组列表：左图标+说明，右控件） */}
           {activeTab === 'settings' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {macPageNav(true)}
-              <div className="content-header">
-                <div>
-                  <h1 className="content-title">首选项设置</h1>
-                  <p className="content-subtitle">配置本地监听端口、DNS 解析与系统集成</p>
-                </div>
-                <button className="win11-btn primary" onClick={handleSaveSettings}>
-                  <Check size={14} />
-                  <span>保存设置</span>
-                </button>
+            <div className="prefs">
+              {macPageNav(true, settingsActions)}
+              <div className="prefs-header">
+                <h1 className="content-title">首选项设置</h1>
+                <p className="content-subtitle">配置本地监听端口、内核、DNS 与系统集成</p>
               </div>
 
-              {/* Group 1 */}
-              <div className="win11-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600 }}>本地代理端口</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-                  <div className="form-group">
-                    <label className="form-label">SOCKS5 代理端口</label>
+              <section className="prefs-section">
+                <h2 className="prefs-section-title">本地代理</h2>
+                <div className="prefs-group">
+                  {prefRow(<Plug size={16} />, 'SOCKS5 代理端口', '本机 SOCKS5 监听端口，默认 10808', (
                     <input
                       type="number"
-                      className="win11-input"
+                      className="win11-input prefs-input-num"
                       value={settings.socksPort}
                       onChange={e => setLocalSettings({ ...settings, socksPort: parseInt(e.target.value, 10) || 10808 })}
                     />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">HTTP / HTTPS 代理端口</label>
+                  ))}
+                  {prefRow(<Globe size={16} />, 'HTTP / HTTPS 代理端口', '系统代理使用的 HTTP 监听端口，默认 10809', (
                     <input
                       type="number"
-                      className="win11-input"
+                      className="win11-input prefs-input-num"
                       value={settings.httpPort}
                       onChange={e => setLocalSettings({ ...settings, httpPort: parseInt(e.target.value, 10) || 10809 })}
                     />
-                  </div>
+                  ))}
+                  {prefRow(<Wifi size={16} />, '允许局域网连接', '让同一局域网的设备通过本机 IP 和上面的端口代理上网', prefToggle('allowLan'))}
                 </div>
+              </section>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 500 }}>允许来自局域网的连接 (Allow LAN)</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>让同局域网设备通过本机 IP 代理上网</div>
-                  </div>
-                  <label className="win11-toggle">
+              <section className="prefs-section">
+                <h2 className="prefs-section-title">内核与解析</h2>
+                <div className="prefs-group">
+                  {prefRow(<Cpu size={16} />, '代理内核', 'Xray-core 协议支持最全，推荐保持默认', (
+                    <select
+                      className="win11-input prefs-select"
+                      value={settings.coreType}
+                      onChange={e => setLocalSettings({ ...settings, coreType: e.target.value })}
+                    >
+                      <option value="Xray-core">Xray-core（推荐）</option>
+                      <option value="V2Ray-core">V2Ray-core（传统稳定版）</option>
+                    </select>
+                  ))}
+                  {prefRow(<Layers size={16} />, 'MUX 多路复用', '合并 TCP 连接，降低握手延迟', prefToggle('muxEnabled'))}
+                  {prefRow(<Server size={16} />, 'DNS 服务器', '远程与直连解析使用的 DNS，多个用英文逗号分隔', (
                     <input
-                      type="checkbox"
-                      checked={settings.allowLan}
-                      onChange={e => setLocalSettings({ ...settings, allowLan: e.target.checked })}
+                      type="text"
+                      className="win11-input prefs-input-wide"
+                      value={settings.dnsServers}
+                      onChange={e => setLocalSettings({ ...settings, dnsServers: e.target.value })}
                     />
-                    <span className="toggle-track"><span className="toggle-thumb" /></span>
-                  </label>
+                  ))}
                 </div>
-              </div>
+              </section>
 
-              {/* Group 2 */}
-              <div className="win11-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600 }}>核心引擎与多路复用</h3>
-                <div className="form-group">
-                  <label className="form-label">底层 Core 类型</label>
-                  <select
-                    className="win11-input"
-                    value={settings.coreType}
-                    onChange={e => setLocalSettings({ ...settings, coreType: e.target.value })}
-                  >
-                    <option value="Xray-core">Xray-core (推荐，协议支持全)</option>
-                    <option value="V2Ray-core">V2Ray-core (传统稳定版)</option>
-                  </select>
+              <section className="prefs-section">
+                <h2 className="prefs-section-title">{isMac ? "后台运行与登录启动" : "启动与托盘"}</h2>
+                <div className="prefs-group">
+                  {prefRow(<Power size={16} />, isMac ? '登录时自动启动' : '开机自动启动', isMac ? '登录 macOS 后自动启动 KNcloud（写入 ~/Library/LaunchAgents）' : '登录 Windows 后自动启动 KNcloud-WIN', prefToggle('autoStart'))}
+                  {prefRow(<Monitor size={16} />, isMac ? '关闭窗口时隐藏到后台' : '关闭窗口时最小化到托盘', isMac ? '关闭后继续在后台运行；点 Dock 图标恢复窗口，菜单栏「代理」可切换模式和节点，Cmd+Q 退出' : '关闭主窗口后继续在托盘运行；右键托盘图标可切换模式、节点或退出', prefToggle('minimizeToTray'))}
+                  {prefRow(<RefreshCw size={16} />, '自动更新订阅', '登录官网账户后，每周自动刷新套餐流量并同步最新节点', (
+                    <select
+                      className="win11-input prefs-select-sm"
+                      value={(settings.subUpdateHours || 0) < 0 ? -1 : 0}
+                      onChange={e => setLocalSettings({ ...settings, subUpdateHours: parseInt(e.target.value, 10) })}
+                    >
+                      <option value={0}>每周（默认）</option>
+                      <option value={-1}>关闭</option>
+                    </select>
+                  ))}
                 </div>
+              </section>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 500 }}>启用 MUX 多路复用 (Multiplexing)</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>合并 TCP 连接，降低握手延迟</div>
-                  </div>
-                  <label className="win11-toggle">
-                    <input
-                      type="checkbox"
-                      checked={settings.muxEnabled}
-                      onChange={e => setLocalSettings({ ...settings, muxEnabled: e.target.checked })}
-                    />
-                    <span className="toggle-track"><span className="toggle-thumb" /></span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Group 3 */}
-              <div className="win11-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600 }}>DNS 服务器设置</h3>
-                <div className="form-group">
-                  <label className="form-label">远程与直连 DNS 服务器地址 (英文逗号分隔)</label>
-                  <input
-                    type="text"
-                    className="win11-input"
-                    value={settings.dnsServers}
-                    onChange={e => setLocalSettings({ ...settings, dnsServers: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* Group 4: 系统托盘与开机启动 */}
-              <div className="win11-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600 }}>{isMac ? '后台运行与登录启动' : '系统托盘与开机启动'}</h3>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{isMac ? '登录时自动启动' : '开机自动启动'}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      {isMac ? '登录 macOS 后自动启动 KNcloud（写入 ~/Library/LaunchAgents），方便随时接管代理' : '登录 Windows 后自动启动 KNcloud-WIN，方便随时接管代理'}
+              {/* 关于与更新（纯手动：点「检查更新」才联网，点「立即更新」才下载安装） */}
+              <section className="prefs-section">
+                <h2 className="prefs-section-title">关于</h2>
+                <div className="prefs-group">
+                  {prefRow(<Info size={16} />, `${productName} ${appVersion || '…'}`, '从 GitHub Releases 检查新版本；不会自动下载或安装，更新时保留配置与日志', (
+                    <button className="win11-btn" onClick={handleCheckUpdate} disabled={updChecking || updBusy}>
+                      <RefreshCw size={13} className={updChecking ? 'spin' : ''} />
+                      <span>{updChecking ? '检查中…' : '检查更新'}</span>
+                    </button>
+                  ))}
+                  {(updInfo || updProgress.stage !== 'idle') && (
+                    <div className="prefs-row-sub">
+                      {updInfo && (
+                        <div className="update-result">
+                          <div className={`update-msg ${updInfo.hasUpdate ? 'has-update' : ''}`}>
+                            {updInfo.hasUpdate
+                              ? `发现新版本 ${updInfo.latestVersion}${updInfo.publishedAt ? '（' + updInfo.publishedAt.slice(0, 10) + '）' : ''}`
+                              : (updInfo.message || '已是最新版本') + (updInfo.latestVersion && !updInfo.hasUpdate ? ` · 最新发布 ${updInfo.latestVersion}` : '')}
+                          </div>
+                          {updInfo.hasUpdate && updInfo.notes && (
+                            <pre className="update-notes">{updInfo.notes}</pre>
+                          )}
+                          {updInfo.hasUpdate && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <button className="win11-btn primary" onClick={handleStartUpdate} disabled={updBusy}>
+                                <ArrowDownLeft size={13} />
+                                <span>{updBusy ? '更新中…' : '立即更新'}</span>
+                              </button>
+                              {updInfo.assetSize > 0 && (
+                                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                  安装包 {(updInfo.assetSize / 1048576).toFixed(1)} MB · 完成后自动重启
+                                </span>
+                              )}
+                              {updInfo.releaseUrl && (
+                                <button type="button" className="core-link" onClick={() => BrowserOpenURL(updInfo.releaseUrl)}>查看发布页</button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {updProgress.stage !== 'idle' && (
+                        <div className="update-progress">
+                          {updBusy && (
+                            <div className="simple-account-bar update-bar">
+                              <div style={{ width: Math.max(2, Math.min(100, updProgress.percent || 0)) + '%' }} />
+                            </div>
+                          )}
+                          <div className={`update-progress-msg ${updProgress.stage === 'error' ? 'error' : ''}`}>{updProgress.message}</div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <label className="win11-toggle">
-                    <input
-                      type="checkbox"
-                      checked={!!settings.autoStart}
-                      onChange={e => setLocalSettings({ ...settings, autoStart: e.target.checked })}
-                    />
-                    <span className="toggle-track"><span className="toggle-thumb" /></span>
-                  </label>
+                  )}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 500 }}>自动更新订阅</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      登录官网账户后，每周自动刷新套餐流量并同步最新节点
-                    </div>
-                  </div>
-                  <select
-                    className="win11-input"
-                    style={{ width: '140px' }}
-                    value={(settings.subUpdateHours || 0) < 0 ? -1 : 0}
-                    onChange={e => setLocalSettings({ ...settings, subUpdateHours: parseInt(e.target.value, 10) })}
-                  >
-                    <option value={0}>每周（默认）</option>
-                    <option value={-1}>关闭</option>
-                  </select>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{isMac ? '关闭窗口时隐藏到后台' : '关闭窗口时最小化到托盘'}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      {isMac ? '关闭主窗口后程序继续在后台运行；点 Dock 图标恢复窗口，顶部菜单栏「代理」菜单可切换模式、切换节点，Cmd+Q 退出' : '关闭主窗口后程序继续在右下角托盘运行；右键托盘图标可切换模式、切换节点或退出'}
-                    </div>
-                  </div>
-                  <label className="win11-toggle">
-                    <input
-                      type="checkbox"
-                      checked={!!settings.minimizeToTray}
-                      onChange={e => setLocalSettings({ ...settings, minimizeToTray: e.target.checked })}
-                    />
-                    <span className="toggle-track"><span className="toggle-thumb" /></span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Group 5: 关于与更新（纯手动：点「检查更新」才联网，点「立即更新」才下载安装） */}
-              <div className="win11-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600 }}>关于与更新</h3>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 500 }}>当前版本 {appVersion || '…'}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      从 GitHub Releases 检查新版本；不会自动下载或安装，配置与日志在更新时保持不变
-                    </div>
-                  </div>
-                  <button className="win11-btn" onClick={handleCheckUpdate} disabled={updChecking || updBusy} style={{ flex: 'none' }}>
-                    <RefreshCw size={13} className={updChecking ? 'spin' : ''} />
-                    <span>{updChecking ? '检查中…' : '检查更新'}</span>
-                  </button>
-                </div>
-
-                {updInfo && (
-                  <div className="update-result">
-                    <div className={`update-msg ${updInfo.hasUpdate ? 'has-update' : ''}`}>
-                      {updInfo.hasUpdate
-                        ? `发现新版本 ${updInfo.latestVersion}${updInfo.publishedAt ? '（' + updInfo.publishedAt.slice(0, 10) + '）' : ''}`
-                        : (updInfo.message || '已是最新版本') + (updInfo.latestVersion && !updInfo.hasUpdate ? ` · 最新发布 ${updInfo.latestVersion}` : '')}
-                    </div>
-                    {updInfo.hasUpdate && updInfo.notes && (
-                      <pre className="update-notes">{updInfo.notes}</pre>
-                    )}
-                    {updInfo.hasUpdate && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <button className="win11-btn primary" onClick={handleStartUpdate} disabled={updBusy}>
-                          <ArrowDownLeft size={13} />
-                          <span>{updBusy ? '更新中…' : '立即更新'}</span>
-                        </button>
-                        {updInfo.assetSize > 0 && (
-                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                            安装包 {(updInfo.assetSize / 1048576).toFixed(1)} MB · 完成后自动重启
-                          </span>
-                        )}
-                        {updInfo.releaseUrl && (
-                          <button type="button" className="core-link" onClick={() => BrowserOpenURL(updInfo.releaseUrl)}>查看发布页</button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {updProgress.stage !== 'idle' && (
-                  <div className="update-progress">
-                    {updBusy && (
-                      <div className="simple-account-bar update-bar">
-                        <div style={{ width: Math.max(2, Math.min(100, updProgress.percent || 0)) + '%' }} />
-                      </div>
-                    )}
-                    <div className={`update-progress-msg ${updProgress.stage === 'error' ? 'error' : ''}`}>{updProgress.message}</div>
-                  </div>
-                )}
-              </div>
+              </section>
             </div>
           )}
+
         </main>
       </div>
 
