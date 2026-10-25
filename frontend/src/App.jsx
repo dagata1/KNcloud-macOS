@@ -1279,6 +1279,7 @@ export default function App() {
     // 简易模式：绕过大陆或 TUN（普通模式里开启的）都算已连接
     const routing = status.routingMode || 'bypass-cn';
     const simpleOn = status.tunnelMode || routing === 'bypass-cn';
+    const simpleState = !simpleOn ? 'off' : (['checking', 'fail', 'none'].includes(simpleNet) ? simpleNet : 'ok');
     return (
       <div className={`app-window ${theme === 'dark' ? 'dark-theme' : ''}${isMac ? ' platform-mac' : ''}`}>
         <header className="titlebar drag-region">
@@ -1316,42 +1317,56 @@ export default function App() {
             </div>
           </div>
         )}
-        <div className="simple-body">
-          <button
-            className={[
-              'simple-power-btn',
-              simpleOn && simpleNet === 'ok' ? 'connected' : '',
-              simpleOn && simpleNet === 'checking' ? 'connecting' : '',
-              simpleOn && simpleNet === 'fail' ? 'failed' : '',
-            ].filter(Boolean).join(' ')}
-            onClick={handleSimpleConnect}
-            title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
-          >
-            <SimpleCloudIcon />
-          </button>
+        <div className={`simple-body st-${simpleState}`}>
+          <div className="simple-hero">
+            <div className="simple-orb">
+              <button
+                className={[
+                  'simple-power-btn',
+                  simpleState === 'ok' ? 'connected' : '',
+                  simpleState === 'checking' ? 'connecting' : '',
+                  simpleState === 'fail' ? 'failed' : '',
+                ].filter(Boolean).join(' ')}
+                onClick={handleSimpleConnect}
+                title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
+              >
+                <SimpleCloudIcon />
+              </button>
+            </div>
 
-          <div
-            className={`simple-status-text ${simpleOn && simpleNet === 'checking' ? 'checking' : ''}`}
-            style={simpleNet === 'fail' ? { color: '#ff6b6b' } : (simpleOn && simpleNet === 'ok' ? { color: '#3fbf6f' } : null)}
-          >
-            {!simpleOn
-              ? '开始连接'
-              : simpleNet === 'checking'
-                ? '正在连接…'
-                : simpleNet === 'fail'
-                  ? '连接失败，请更换节点'
-                  : simpleNet === 'none'
-                    ? '未选择节点'
-                    : '链接成功'}
-          </div>
+            <div className={`simple-status-text ${simpleState === 'checking' ? 'checking' : ''}`}>
+              {simpleState === 'off'
+                ? '未连接'
+                : simpleState === 'checking'
+                  ? '正在连接…'
+                  : simpleState === 'fail'
+                    ? '连接失败'
+                    : simpleState === 'none'
+                      ? '未选择节点'
+                      : '连接成功'}
+            </div>
+            <div className="simple-status-sub">
+              {simpleState === 'off'
+                ? '点击云朵开始连接'
+                : simpleState === 'fail'
+                  ? '请更换节点后重试'
+                  : (status.tunnelMode ? 'TUN 模式 · 全局接管' : '智能分流 · 绕过大陆')}
+            </div>
 
-          <div className="simple-speed">
-            <span>↑ {status.upSpeed}</span>
-            <span>↓ {status.downSpeed}</span>
+            <div className="simple-speed">
+              <div className="simple-speed-chip up">
+                <ArrowUpRight size={13} />
+                <span className="v">{status.upSpeed}</span>
+              </div>
+              <div className="simple-speed-chip down">
+                <ArrowDownLeft size={13} />
+                <span className="v">{status.downSpeed}</span>
+              </div>
+            </div>
           </div>
 
           <div className="simple-node-area" style={{ position: 'relative' }}>
-            <label>代理节点</label>
+            <label>当前节点</label>
             <button type="button" ref={nodeTriggerRef} className="simple-node-trigger" onClick={toggleNodeMenu}>
               {activeNode ? (
                 <>
@@ -1398,21 +1413,29 @@ export default function App() {
 
           {account && account.loggedIn && (
             <div className="simple-account">
-              <div className="simple-account-row">
-                <span>{account.email}</span>
-                <span>{account.planName || 'KNcloud 套餐'}</span>
+              <div className="simple-account-head">
+                <div className="simple-avatar">{(account.email || 'K').slice(0, 1).toUpperCase()}</div>
+                <div className="simple-account-id">
+                  <div className="simple-account-email">{account.email}</div>
+                  <div className="simple-account-expire">{account.expire}</div>
+                </div>
+                <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
               </div>
-              <div className="simple-account-bar">
-                <div style={{
-                  width: account.transferEnable > 0
-                    ? Math.min(100, Math.round((account.usedUp + account.usedDown) * 100 / account.transferEnable)) + '%'
-                    : '0%'
-                }} />
-              </div>
-              <div className="simple-account-row small">
-                <span>已用 {fmtGB(account.usedUp + account.usedDown)} / {account.transferEnable > 0 ? fmtGB(account.transferEnable) : '无限'}</span>
-                <span>{account.expire}</span>
-              </div>
+              {(() => {
+                const used = account.usedUp + account.usedDown;
+                const pct = account.transferEnable > 0 ? Math.min(100, (used * 100) / account.transferEnable) : 0;
+                return (
+                  <div className="simple-usage">
+                    <div className="simple-usage-row">
+                      <span>已用 <b>{fmtGB(used)}</b></span>
+                      <span>{account.transferEnable > 0 ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% · 共 ${fmtGB(account.transferEnable)}` : '不限流量'}</span>
+                    </div>
+                    <div className="simple-account-bar">
+                      <div style={{ width: pct + '%' }} />
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="simple-account-actions">
                 <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
                   <RefreshCw size={13} className={syncing ? 'spin' : ''} />
