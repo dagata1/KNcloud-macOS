@@ -1256,7 +1256,10 @@ export default function App() {
   // 简易模式节点下拉：按窗口剩余空间限高，下方放不下时向上展开，保证能滚到最后一个节点
   const toggleNodeMenu = () => {
     if (nodeMenuOpen) { setNodeMenuOpen(false); return; }
-    const r = nodeTriggerRef.current?.getBoundingClientRect();
+    // 菜单是相对外层容器（含「当前节点」标签）定位的，不是相对按钮本身；
+    // 必须用容器的边界来算可用空间，否则向上展开时会多出标签高度而顶到标题栏下面
+    const el = nodeTriggerRef.current;
+    const r = (el?.offsetParent || el)?.getBoundingClientRect();
     if (r) {
       const margin = 12;
       const below = window.innerHeight - r.bottom - 6 - margin;
