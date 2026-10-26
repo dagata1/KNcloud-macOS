@@ -2198,7 +2198,7 @@ select.win11-input option {
   letter-spacing: 0.4px;
 }
 .simple-node-delay { font-variant-numeric: tabular-nums; font-family: 'SF Mono', Menlo, monospace; }
-.simple-node-menu { border-radius: 12px; padding: 5px; }
+.simple-node-menu { border-radius: 12px; padding: 5px; box-sizing: border-box; }
 .simple-node-item { border-radius: 8px; }
 .simple-node-item.active { background: var(--accent-subtle); }
 
