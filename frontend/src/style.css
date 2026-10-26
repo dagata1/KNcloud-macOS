@@ -2351,3 +2351,4 @@ select.win11-input option {
 .sb-account .sb-actions .win11-btn.danger { background: rgba(255, 107, 107, 0.12); border-color: rgba(255, 107, 107, 0.22); }
 .app-window:not(.dark-theme) .sb-account .sb-actions .win11-btn.danger { background: rgba(200, 40, 40, 0.08); border-color: rgba(200, 40, 40, 0.18); }
 .sb-account .sb-actions .win11-btn.danger:hover:not(:disabled) { background: rgba(255, 107, 107, 0.2); }
+.sb-account .simple-account-actions.sb-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -1460,10 +1460,6 @@ export default function App() {
                       <RefreshCw size={13} className={syncing ? 'spin' : ''} />
                       <span>{syncing ? '更新中…' : '更新订阅'}</span>
                     </button>
-                    <button className="win11-btn" onClick={handlePingAll} disabled={isPingingAll} title={isPingingAll ? '测速中…' : '测试节点'} aria-label="测试节点">
-                      <Gauge size={13} />
-                      <span>{isPingingAll ? '测速中…' : '测试节点'}</span>
-                    </button>
                     <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
                       <LogOut size={13} />
                       <span>退出登录</span>
