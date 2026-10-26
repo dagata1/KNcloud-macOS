@@ -648,9 +648,6 @@ export default function App() {
     }
   };
 
-  // 路由页「全局路由模式」卡片与仪表盘按钮共用同一套互斥逻辑
-  const handleRoutingChange = (mode) => handleModeSelect(mode);
-
   // 换节点：
   //  - 「已连接」只按后端确认的状态判断；切换进行中的乐观高亮不算，点别的节点会发起新切换；
   //  - 新点击会取代仍在进行的旧请求（后端让排队中的旧请求直接放弃），只有最后一次点击的结果生效；
@@ -2083,59 +2080,6 @@ export default function App() {
                 <div>
                   <h1 className="content-title">路由与分流规则</h1>
                   <p className="content-subtitle">智能域名解析与流量分流（基于 GEOIP & GEOSITE）</p>
-                </div>
-              </div>
-
-              <div className="win11-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600 }}>全局路由模式</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                  <div
-                    onClick={() => handleRoutingChange('bypass-cn')}
-                    style={{
-                      padding: '16px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      border: shownMode === 'bypass-cn' ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
-                      background: shownMode === 'bypass-cn' ? 'var(--accent-subtle)' : 'var(--bg-card)'
-                    }}
-                  >
-                    <h4 style={{ fontSize: '13px', fontWeight: 600 }}>绕过大陆 (GFWList)</h4>
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      国内 IP 与主流国内域名直连，被屏蔽的国际网站自动通过节点代理转发。
-                    </p>
-                  </div>
-
-                  <div
-                    onClick={() => handleRoutingChange('global')}
-                    style={{
-                      padding: '16px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      border: shownMode === 'global' ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
-                      background: shownMode === 'global' ? 'var(--accent-subtle)' : 'var(--bg-card)'
-                    }}
-                  >
-                    <h4 style={{ fontSize: '13px', fontWeight: 600 }}>全局代理 (Global)</h4>
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      全部外部流量强制通过当前选中节点代理。
-                    </p>
-                  </div>
-
-                  <div
-                    onClick={() => handleRoutingChange('direct')}
-                    style={{
-                      padding: '16px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      border: shownMode === 'direct' ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
-                      background: shownMode === 'direct' ? 'var(--accent-subtle)' : 'var(--bg-card)'
-                    }}
-                  >
-                    <h4 style={{ fontSize: '13px', fontWeight: 600 }}>全局直连 (Direct)</h4>
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      不通过代理服务器，直接使用本地宽带直连访问互联网。
-                    </p>
-                  </div>
                 </div>
               </div>
 
