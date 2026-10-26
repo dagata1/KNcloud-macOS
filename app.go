@@ -144,16 +144,18 @@ type App struct {
 	tap               *tapForwarder // tapstack.go：Go 重写的 SSTap 核心（常驻网卡 + gvisor 转发），TUN 主路径
 	nativeTunCmd      *exec.Cmd     // C/lwIP tun2socks helper, SSTap-compatible fast path
 	nativeTunDone     chan struct{}
-	tapDnsHijacked    bool           // 是否给 TUN 网卡设置过劫持 DNS（停止时需复位）
-	tunRt             *tunRouteState // TUN 写入系统的全部 IPv4 路由记账（差量同步，见 tunroutes.go）
-	tunOps            routeOps       // 路由操作实现；nil 表示 Windows IP Helper（单测注入 fake）
-	tunPhys           physHop        // TUN 开启时的默认物理出口（绕过网段用）
-	tunEgressIface    string         // TUN 开启时的物理网卡名：Xray 出站 sockopt.interface 绑定它；空表示 TUN 未接管
-	tunUDPPort        int            // TUN 开启时 UDP 专用（不嗅探）SOCKS 入站端口；0 = 未启用
-	tunDNSGuard       *tunDNSGuard   // TUN 开启时拦截发往物理网卡 DNS 的查询（WFP 动态会话）
-	tunV6             bool           // 是否写过 2000::/3 防泄漏路由
-	tunPausedSysProxy bool           // TUN 开启时暂停了 Windows 系统代理，关 TUN 时恢复
-	autoPing          autoPinger     // 后台自动测速（autoping.go）
+	tapDnsHijacked    bool              // 是否给 TUN 网卡设置过劫持 DNS（停止时需复位）
+	tunRt             *tunRouteState    // TUN 写入系统的全部 IPv4 路由记账（差量同步，见 tunroutes.go）
+	tunOps            routeOps          // 路由操作实现；nil 表示 Windows IP Helper（单测注入 fake）
+	tunPhys           physHop           // TUN 开启时的默认物理出口（绕过网段用）
+	tunEgressIface    string            // TUN 开启时的物理网卡名：Xray 出站 sockopt.interface 绑定它；空表示 TUN 未接管
+	tunUDPPort        int               // TUN 开启时 UDP 专用（不嗅探）SOCKS 入站端口；0 = 未启用
+	tunDNSGuard       *tunDNSGuard      // TUN 开启时拦截发往物理网卡 DNS 的查询（WFP 动态会话）
+	tunV6             bool              // 是否写过 2000::/3 防泄漏路由
+	tunNode6          *tunNodeV6        // 双栈节点走 IPv6 时写入的节点 /128（tunnode6.go）；nil = 走 IPv4
+	tunPinV6          map[string]net.IP // TUN 下按节点地址登记的 IPv6 钉 IP（SS/SOCKS 出站用）
+	tunPausedSysProxy bool              // TUN 开启时暂停了 Windows 系统代理，关 TUN 时恢复
+	autoPing          autoPinger        // 后台自动测速（autoping.go）
 	account           AccountInfo
 	// 退出相关状态一律用原子量，不走 a.mu：退出路径必须在 a.mu 被长操作占住时也能推进
 	// （v1.3.26 前 quitApp 先 a.mu.Lock() 再布置 watchdog，锁被占住时托盘「退出」毫无反应）。

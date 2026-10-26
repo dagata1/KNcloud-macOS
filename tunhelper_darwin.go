@@ -39,7 +39,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const tunHelperProtoVersion = 1
+const tunHelperProtoVersion = 2 // 2：网关允许 IPv6 链路本地 %zone（双栈节点 /128）
 
 type helperReq struct {
 	Op      string   `json:"op"`
@@ -348,7 +348,9 @@ func validateHelperRoute(req helperReq) (helperRoute, error) {
 		}
 		r.Iface = req.Iface
 	case req.Gateway != "":
-		if net.ParseIP(req.Gateway) == nil {
+		// IPv6 链路本地网关必须带接口（fe80::1%en0）
+		gw, zone, zoned := strings.Cut(req.Gateway, "%")
+		if net.ParseIP(gw) == nil || (zoned && !ifaceNameRe.MatchString(zone)) {
 			return helperRoute{}, fmt.Errorf("bad gateway %q", req.Gateway)
 		}
 		r.Gateway = req.Gateway

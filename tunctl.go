@@ -52,7 +52,7 @@ func tunDNSGuardEnabled() bool { return os.Getenv("KNCLOUD_TUN_DNS_GUARD") == "1
 func tunNodeHops(node NodeItem, tunIdx uint32) ([]hopRoute, error) {
 	ips := lookupNodeIPv4sCached(node.Address)
 	if len(ips) == 0 {
-		return nil, fmt.Errorf("failed to resolve a valid IPv4 address for node %s (DNS polluted or IPv6-only; IPv6-only nodes are not supported in TUN mode)", node.Address)
+		return nil, fmt.Errorf("failed to resolve a valid IPv4 address for node %s (DNS polluted, or an IPv6-only node while this PC has no IPv6)", node.Address)
 	}
 	var hops []hopRoute
 	for _, ip := range ips {
@@ -211,13 +211,16 @@ func (a *App) tunStartLocked() error {
 	}
 	dev := currentTunDevice()
 	staleIdx := dev.CachedIfIdx()
-	hops, err := tunNodeHops(*node, staleIdx)
+	hops, v6, err := a.tunNodeTargets(*node, staleIdx)
 	if err != nil {
 		a.addLogInternal("error", "TUN: "+err.Error())
 		return err
 	}
 	phys, ok := physHopFor(net.ParseIP("223.5.5.5"), staleIdx)
 	if !ok {
+		if len(hops) == 0 {
+			return fmt.Errorf("cannot determine physical IPv4 interface")
+		}
 		phys = hops[0].Hop
 	}
 	ifc, err := net.InterfaceByIndex(int(phys.IfIndex))
@@ -316,6 +319,12 @@ func (a *App) tunStartLocked() error {
 		return fail(fmt.Errorf("routing setup failed: %v", err))
 	}
 	routeDur := time.Since(tr)
+	if v6 != nil {
+		a.tunNode6 = v6 // 先登记：失败时软停按账清理
+		if err := addNodeV6Route(v6); err != nil {
+			return fail(err)
+		}
+	}
 	if shape.Defaults && !native {
 		if err := addTunIPv6Route(ifIdx); err == nil {
 			a.tunV6 = true
@@ -330,8 +339,8 @@ func (a *App) tunStartLocked() error {
 	if native {
 		engine = "native tun2socks (SSTAP 1)"
 	}
-	a.addLogInternal("info", fmt.Sprintf("TUN ready | engine %s | policy %s | %d routes (%d bypass) in %s | egress %s | total %s | node: %s",
-		engine, policy, added, a.tunRt.count("bypass"), routeDur.Round(time.Millisecond), ifc.Name, time.Since(t0).Round(time.Millisecond), node.Name))
+	a.addLogInternal("info", fmt.Sprintf("TUN ready | engine %s | policy %s | %d routes (%d bypass) in %s | egress %s | total %s | node: %s via %s",
+		engine, policy, added, a.tunRt.count("bypass"), routeDur.Round(time.Millisecond), ifc.Name, time.Since(t0).Round(time.Millisecond), node.Name, describeNodeFamily(v6)))
 	return nil
 }
 
@@ -348,6 +357,7 @@ func (a *App) tunSoftStopLocked() {
 	}
 	a.tunIfaceIdx = 0
 	a.tunRunning = false
+	a.tunPinV6 = nil
 	if a.tunEgressIface != "" {
 		a.tunEgressIface = ""
 		a.tunUDPPort = 0
@@ -410,6 +420,10 @@ func (a *App) resumeSystemProxyAfterTunLocked() {
 // removeTapRouting 撤除 TUN 写入的全部路由与 DNS 劫持（网卡保留）。
 // 不依赖 tunRunning：失败路径的半装状态同样按账清理。
 func (a *App) removeTapRouting() {
+	if a.tunNode6 != nil {
+		removeNodeV6Route(a.tunNode6)
+		a.tunNode6 = nil
+	}
 	failed := 0
 	if a.tunRt != nil {
 		removed, f := a.tunRt.clear(a.tunRouteOps())
@@ -500,7 +514,7 @@ func (a *App) tunHardSwitchLocked(node NodeItem) error {
 		return fmt.Errorf("TUN is not running")
 	}
 	t0 := time.Now()
-	hops, err := tunNodeHops(node, a.tunIfaceIdx)
+	hops, v6, err := a.tunNodeTargets(node, a.tunIfaceIdx)
 	if err != nil {
 		return fmt.Errorf("%w: %v", errNodeRejected, err)
 	}
@@ -548,12 +562,30 @@ func (a *App) tunHardSwitchLocked(node NodeItem) error {
 		},
 		flushDNS: func() { go flushDnsClientCache() }, // 异步：调用方持有 a.mu
 	}
+	// 双栈走 IPv6：新节点 /128 与 IPv4 /32 一样先加（新旧并存），成功后再删旧的
+	old6 := a.tunNode6
+	newV6Route := v6 != nil && !v6.sameRoute(old6)
+	if newV6Route {
+		if err := addNodeV6Route(v6); err != nil {
+			return fmt.Errorf("%w: %v", errNodeRejected, err)
+		}
+	}
 	err = runTunNodeSwitch(a.tunRt, a.tunRouteOps(), desired, deps)
+	if err != nil && errors.Is(err, errNodeRejected) {
+		if newV6Route {
+			removeNodeV6Route(v6)
+		}
+		return err
+	}
+	if old6 != nil && !old6.sameRoute(v6) {
+		removeNodeV6Route(old6)
+	}
+	a.tunNode6 = v6
 	if err != nil {
 		return err
 	}
-	a.addLogInternal("info", fmt.Sprintf("TUN node switched in %s | %d node route(s) | split routes untouched | node: %s (%s:%d)",
-		time.Since(t0).Round(time.Millisecond), len(hops), node.Name, node.Address, node.Port))
+	a.addLogInternal("info", fmt.Sprintf("TUN node switched in %s | %d node route(s) | split routes untouched | node: %s (%s:%d) via %s",
+		time.Since(t0).Round(time.Millisecond), len(hops), node.Name, node.Address, node.Port, describeNodeFamily(v6)))
 	return nil
 }
 

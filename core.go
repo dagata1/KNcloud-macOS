@@ -408,15 +408,15 @@ func buildProxyOutbound(node NodeItem, muxEnabled bool, bridgeAddr string) (map[
 //   - 不开 mux：整机流量挤进 8 路复用连接会队头阻塞；
 //   - streamSettings.sockopt.interface 绑定物理网卡：到节点的连接不管解析出哪个 IP
 //     （CDN/多 A 记录/AAAA）都直接走物理网卡，不会被 TUN 默认路由吸回形成回环；
-//   - Shadowsocks 节点地址钉成预解析 IP（与防回环 /32 一致）：Xray 的 UDP 拨号不受
+//   - Shadowsocks 节点地址钉成预解析 IP（与防回环 /32 或 /128 一致；双栈按 tunnode6.go 选族）：Xray 的 UDP 拨号不受
 //     sockopt.interface 约束，钉 IP 保证 UDP 也走 /32。SS 没有 SNI/Host，钉 IP 无副作用。
 //
 // AnyTLS 出站指向本机协议桥（回环），不绑网卡；桥自己已把节点钉成 /32 里的 IP。
 func (a *App) buildProxyOutboundLocked(node NodeItem, bridgeAddr string) (map[string]interface{}, error) {
 	tun := a.tunEgressIface != ""
 	if tun && (node.Protocol == "Shadowsocks" || node.Protocol == "SOCKS") && net.ParseIP(node.Address) == nil {
-		if ips := lookupNodeIPv4sCached(node.Address); len(ips) > 0 {
-			node.Address = ips[0].String()
+		if ip := a.tunNodePinIP(node.Address); ip != nil {
+			node.Address = ip.String()
 		}
 	}
 	out, err := buildProxyOutbound(node, a.settings.MuxEnabled && !tun, bridgeAddr)
