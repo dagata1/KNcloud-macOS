@@ -1319,72 +1319,69 @@ export default function App() {
             </div>
           </div>
         )}
-        <div className={`simple-body st-${simpleState}`}>
-          <div className="simple-hero">
-            <div className="simple-orb">
-              <button
-                className={[
-                  'simple-power-btn',
-                  simpleState === 'ok' ? 'connected' : '',
-                  simpleState === 'checking' ? 'connecting' : '',
-                  simpleState === 'fail' ? 'failed' : '',
-                ].filter(Boolean).join(' ')}
-                onClick={handleSimpleConnect}
-                title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
-              >
-                <SimpleCloudIcon />
-              </button>
-            </div>
-
-            <div className={`simple-status-text ${simpleState === 'checking' ? 'checking' : ''}`}>
-              {simpleState === 'off'
-                ? '未连接'
-                : simpleState === 'checking'
-                  ? '正在连接…'
+        <div className={`simple-body sb-cards st-${simpleState}`}>
+          {/* 状态卡：电源键 + 连接状态 + 实时速度（仅在连接时显示后端上报的真实速率） */}
+          <div className="sb-card sb-status">
+            <button
+              className={[
+                'simple-power-btn',
+                'sb-power',
+                simpleState === 'ok' ? 'connected' : '',
+                simpleState === 'checking' ? 'connecting' : '',
+                simpleState === 'fail' ? 'failed' : '',
+              ].filter(Boolean).join(' ')}
+              onClick={handleSimpleConnect}
+              title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
+            >
+              <Power size={28} strokeWidth={2.2} />
+            </button>
+            <div className="sb-status-info">
+              <div className={`simple-status-text sb-status-title ${simpleState === 'checking' ? 'checking' : ''}`}>
+                <span className="sb-dot" />
+                <span>
+                  {simpleState === 'off'
+                    ? '未连接'
+                    : simpleState === 'checking'
+                      ? '正在连接…'
+                      : simpleState === 'fail'
+                        ? '连接失败'
+                        : simpleState === 'none'
+                          ? '未选择节点'
+                          : '已连接'}
+                </span>
+              </div>
+              <div className="simple-status-sub sb-status-sub">
+                {simpleState === 'off'
+                  ? '点击左侧按钮开始连接'
                   : simpleState === 'fail'
-                    ? '连接失败'
-                    : simpleState === 'none'
-                      ? '未选择节点'
-                      : '连接成功'}
-            </div>
-            <div className="simple-status-sub">
-              {simpleState === 'off'
-                ? '点击云朵开始连接'
-                : simpleState === 'fail'
-                  ? '请更换节点后重试'
-                  : (status.tunnelMode ? 'TUN 模式 · 全局接管' : '智能分流 · 绕过大陆')}
-            </div>
-
-            <div className="simple-speed">
-              <div className="simple-speed-chip up">
-                <ArrowUpRight size={13} />
-                <span className="v">{status.upSpeed}</span>
+                    ? '请更换节点后重试'
+                    : (status.tunnelMode ? 'TUN 模式 · 全局接管' : '智能分流 · 绕过大陆')}
               </div>
-              <div className="simple-speed-chip down">
-                <ArrowDownLeft size={13} />
-                <span className="v">{status.downSpeed}</span>
-              </div>
+            </div>
+            <div className="sb-speed" title="仅统计经代理节点的流量">
+              <span><ArrowUpRight size={12} /><b>{simpleOn && status.upSpeed ? status.upSpeed : '– –'}</b></span>
+              <span><ArrowDownLeft size={12} /><b>{simpleOn && status.downSpeed ? status.downSpeed : '– –'}</b></span>
             </div>
           </div>
 
-          <div className="simple-node-area" style={{ position: 'relative' }}>
-            <label>当前节点</label>
-            <button type="button" ref={nodeTriggerRef} className="simple-node-trigger" onClick={toggleNodeMenu}>
+          {/* 节点卡：固定单行，点击打开节点下拉（菜单以本容器为定位基准计算上下空间） */}
+          <div className="simple-node-area sb-node-area" style={{ position: 'relative' }}>
+            <button type="button" ref={nodeTriggerRef} className="simple-node-trigger sb-card sb-node" onClick={toggleNodeMenu}>
               {activeNode ? (
                 <>
                   <span className={`proto-badge proto-${activeNode.protocol.toLowerCase()}`}>{protoLabel(activeNode)}</span>
                   <span className="simple-node-name">{activeNode.name}</span>
-                  <span className="simple-node-delay" style={{ color: delayColor(activeNode.delay) }}>
-                    {delayText(activeNode.delay)}
-                  </span>
                 </>
               ) : (
-                <span className="simple-node-name">暂无节点，请在普通模式中添加</span>
+                <span className="simple-node-name sb-node-empty">暂无节点，请在普通模式中添加</span>
               )}
-              <ChevronDown
-                size={14}
-                style={{ flexShrink: 0, opacity: 0.6, transition: 'transform .15s', transform: nodeMenuOpen ? 'rotate(180deg)' : 'none' }}
-              />
+              <span className="sb-node-switch">
+                切换节点
+                <ChevronRight
+                  size={14}
+                  style={{ transition: 'transform .15s', transform: nodeMenuOpen ? 'rotate(90deg)' : 'none' }}
+                />
+              </span>
             </button>
 
             {nodeMenuOpen && (
@@ -1413,47 +1410,69 @@ export default function App() {
             )}
           </div>
 
-          {account && account.loggedIn && (
-            <div className="simple-account">
-              <div className="simple-account-head">
-                <div className="simple-avatar">{(account.email || 'K').slice(0, 1).toUpperCase()}</div>
-                <div className="simple-account-id">
-                  <div className="simple-account-email">{account.email}</div>
-                  <div className="simple-account-expire">{account.expire}</div>
-                </div>
-                <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
-              </div>
-              {(() => {
-                const used = account.usedUp + account.usedDown;
-                const pct = account.transferEnable > 0 ? Math.min(100, (used * 100) / account.transferEnable) : 0;
-                return (
-                  <div className="simple-usage">
-                    <div className="simple-usage-row">
-                      <span>已用 <b>{fmtGB(used)}</b></span>
-                      <span>{account.transferEnable > 0 ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% · 共 ${fmtGB(account.transferEnable)}` : '不限流量'}</span>
-                    </div>
-                    <div className="simple-account-bar">
-                      <div style={{ width: pct + '%' }} />
+          {account && account.loggedIn && (() => {
+            const used = (account.usedUp || 0) + (account.usedDown || 0);
+            const total = account.transferEnable || 0;
+            const limited = total > 0;
+            const pct = limited ? Math.min(100, (used * 100) / total) : 0;
+            const remain = limited ? Math.max(0, total - used) : 0;
+            const R = 27;
+            const C = 2 * Math.PI * R;
+            return (
+              <>
+                {/* 流量卡：圆环百分比 + 已用 + 共 / 剩余（剩余 = 总量 − 已用，均来自账户数据） */}
+                <div className="sb-card sb-traffic">
+                  <div className="sb-ring">
+                    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+                      <circle className="sb-ring-track" cx="32" cy="32" r={R} />
+                      {limited && pct > 0 && (
+                        <circle
+                          className="sb-ring-val"
+                          cx="32" cy="32" r={R}
+                          strokeDasharray={`${(C * pct) / 100} ${C}`}
+                          transform="rotate(-90 32 32)"
+                        />
+                      )}
+                    </svg>
+                    <b>{limited ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%` : '∞'}</b>
+                  </div>
+                  <div className="sb-traffic-info">
+                    <div className="sb-label">本期流量</div>
+                    <div className="sb-traffic-used">{fmtGB(used)}</div>
+                    <div className="sb-traffic-sub">
+                      {limited ? `共 ${fmtGB(total)} · 剩余 ${fmtGB(remain)}` : '不限流量'}
                     </div>
                   </div>
-                );
-              })()}
-              <div className="simple-account-actions">
-                <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
-                  <RefreshCw size={13} className={syncing ? 'spin' : ''} />
-                  <span>{syncing ? '更新中…' : '更新订阅'}</span>
-                </button>
-                <button className="win11-btn" onClick={handlePingAll} disabled={isPingingAll} title={isPingingAll ? '测速中…' : '测试节点'} aria-label="测试节点">
-                  <Gauge size={13} />
-                  <span>{isPingingAll ? '测速中…' : '测试节点'}</span>
-                </button>
-                <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
-                  <LogOut size={13} />
-                  <span>退出登录</span>
-                </button>
-              </div>
-            </div>
-          )}
+                </div>
+
+                {/* 账户卡 */}
+                <div className="sb-card sb-account">
+                  <div className="simple-avatar">{(account.email || 'K').slice(0, 1).toUpperCase()}</div>
+                  <div className="simple-account-id">
+                    <div className="simple-account-email">{account.email}</div>
+                    <div className="simple-account-expire">{account.expire}</div>
+                  </div>
+                  <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className="simple-account-actions sb-actions">
+                  <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
+                    <RefreshCw size={13} className={syncing ? 'spin' : ''} />
+                    <span>{syncing ? '更新中…' : '更新订阅'}</span>
+                  </button>
+                  <button className="win11-btn" onClick={handlePingAll} disabled={isPingingAll} title={isPingingAll ? '测速中…' : '测试节点'} aria-label="测试节点">
+                    <Gauge size={13} />
+                    <span>{isPingingAll ? '测速中…' : '测试节点'}</span>
+                  </button>
+                  <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
+                    <LogOut size={13} />
+                    <span>退出登录</span>
+                  </button>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
     );
