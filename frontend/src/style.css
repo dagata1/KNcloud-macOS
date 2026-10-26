@@ -2402,3 +2402,9 @@ select.win11-input option {
 .sb-usage .simple-account-bar > div { border-radius: 999px; }
 .sb-account .simple-account-actions.sb-actions { padding-top: 11px; gap: 8px; }
 .sb-account .sb-actions .win11-btn { height: 32px; border-radius: 8px; font-size: 12px; }
+
+/* 内容上下铺满：取消垂直居中，节点列表吃掉剩余高度（列表内滚动） */
+.sb-cards > :first-child { margin-top: 0; }
+.sb-cards > :last-child { margin-bottom: 0; }
+.sb-cards > .sb-nodes { flex: 1 1 auto; min-height: calc(4 * 36px + 10px); }
+.sb-card.sb-node-list { flex: 1 1 auto; height: auto; min-height: 0; }
