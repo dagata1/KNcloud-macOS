@@ -1973,12 +1973,11 @@ select.win11-input option {
 .platform-mac .simple-account { margin-top: 8px; padding: 10px 14px; gap: 6px; }
 .platform-mac .simple-account-actions { margin-top: 4px; }
 
-/* 仪表盘铺满内容区：节点框按内容收缩，节点卡片高度在 78–108px 间自适应——空间富余时卡片变高
-   吃掉底部空白，空间不够时先压到 78px，再只在框内滚动，整页不滚动。
+/* 仪表盘铺满内容区：节点框始终撑到底部（节点少时不留空），节点多时只在框内滚动，整页不滚动。
    窗口矮到放不下节点框最小高度时，才退回整页滚动。 */
 .content-surface > .dash-fill { flex: 1 1 0; min-height: 0; }
-.dash-fill > .qp-card { flex: 0 1 auto; min-height: 200px; display: flex; flex-direction: column; }
-.dash-fill > .qp-card > .qp-grid { flex: 1 1 auto; min-height: 0; max-height: none; align-content: start; grid-auto-rows: minmax(78px, 108px); }
+.dash-fill > .qp-card { flex: 1 1 auto; min-height: 200px; display: flex; flex-direction: column; }
+.dash-fill > .qp-card > .qp-grid { flex: 1 1 auto; min-height: 0; max-height: none; align-content: start; }
 
 
 /* ===== 设置页（macOS） ===== */
