@@ -3,53 +3,7 @@ import kncFgWhite from './assets/knc-fg-white.png';
 import kncLoginDark from './assets/knc-login-dark.png';
 import kncLoginLight from './assets/knc-login-light.png';
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Shield,
-  Activity,
-  Server,
-  GitFork,
-  BookOpen,
-  Terminal,
-  Settings,
-  Menu,
-  Sun,
-  Moon,
-  Monitor,
-  Minus,
-  Square,
-  X,
-  Play,
-  Pause,
-  RefreshCw,
-  Plus,
-  Trash2,
-  Zap,
-  Globe,
-  ArrowUpRight,
-  ArrowDownLeft,
-  CheckCircle2,
-  Sliders,
-  Search,
-  Check,
-  Copy,
-  Pencil,
-  ChevronDown,
-  LayoutGrid,
-  SlidersHorizontal,
-  FolderInput,
-  LoaderCircle,
-  Gauge,
-  LogOut,
-  CircleHelp,
-  ChevronLeft,
-  ChevronRight,
-  Plug,
-  Wifi,
-  Cpu,
-  Layers,
-  Power,
-  Info,
-} from 'lucide-react';
+import { Shield, Activity, Server, GitFork, BookOpen, Terminal, Settings, Menu, Sun, Moon, Monitor, Minus, Square, X, Play, Pause, RefreshCw, Plus, Trash2, Zap, Globe, ArrowUpRight, ArrowDownLeft, CheckCircle2, Sliders, Search, Check, Copy, Pencil, ChevronDown, LayoutGrid, SlidersHorizontal, FolderInput, LoaderCircle, Gauge, LogOut, CircleHelp, ChevronLeft, ChevronRight, Plug, Wifi, Cpu, Layers, Power, Info, ArrowUpDown } from 'lucide-react';
 
 import {
   GetNodes,
@@ -187,6 +141,7 @@ export default function App() {
   
   // 简易模式自定义节点下拉是否展开
   const [nodeMenuOpen, setNodeMenuOpen] = useState(false);
+  const [simpleSortDelay, setSimpleSortDelay] = useState(false); // 简洁模式节点列表：按延迟排序
   const [nodeMenuStyle, setNodeMenuStyle] = useState({});
   // 首次从后端取到数据前显示启动页，避免按默认 uiMode 闪出空的简易模式界面
   const [booted, setBooted] = useState(false);
@@ -1373,49 +1328,41 @@ export default function App() {
           </div>
 
           {/* 节点卡：固定单行，点击打开节点下拉（菜单以本容器为定位基准计算上下空间） */}
-          <div className="simple-node-area sb-node-area" style={{ position: 'relative' }}>
-            <button type="button" ref={nodeTriggerRef} className="simple-node-trigger sb-card sb-node" onClick={toggleNodeMenu}>
-              {activeNode ? (
-                <>
-                  <span className={`proto-badge proto-${activeNode.protocol.toLowerCase()}`}>{protoLabel(activeNode)}</span>
-                  <span className="simple-node-name">{activeNode.name}</span>
-                </>
-              ) : (
-                <span className="simple-node-name sb-node-empty">暂无节点，请在普通模式中添加</span>
-              )}
-              <span className="sb-node-switch">
-                切换节点
-                <ChevronRight
-                  size={14}
-                  style={{ transition: 'transform .15s', transform: nodeMenuOpen ? 'rotate(90deg)' : 'none' }}
-                />
-              </span>
-            </button>
-
-            {nodeMenuOpen && (
-              <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setNodeMenuOpen(false)} />
-                <div className="simple-node-menu" style={nodeMenuStyle}>
-                  {nodes.length === 0 && <div className="simple-node-empty">暂无节点，请在普通模式中添加</div>}
-                  {nodes.map(n => (
-                    <div
-                      key={n.id}
-                      className={`simple-node-item ${activeNode && n.id === activeNode.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setNodeMenuOpen(false);
-                        if (!activeNode || n.id !== activeNode.id) handleSimpleSelectNode(n.id);
-                      }}
-                    >
-                      <span className={`proto-badge proto-${n.protocol.toLowerCase()}`}>{protoLabel(n)}</span>
-                      <span className="simple-node-name">{n.name}</span>
-                      <span className="simple-node-delay" style={{ color: delayColor(n.delay) }}>
-                        {delayText(n.delay)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+          <div className="sb-nodes">
+            <div className="sb-nodes-head">
+              <span>节点 · 共 {nodes.length} 个</span>
+              <button
+                type="button"
+                className={`sb-nodes-sort ${simpleSortDelay ? 'on' : ''}`}
+                onClick={() => {
+                  setSimpleSortDelay(v => !v);
+                  // 切换排序时顺带后台重测（60 秒节流），结果逐个回写到列表
+                  if (Date.now() - lastMenuPingAt > 60000) { lastMenuPingAt = Date.now(); StartAutoPing().catch(() => {}); }
+                }}
+              >
+                <ArrowUpDown size={12} />
+                <span>{simpleSortDelay ? '按延迟排序' : '默认排序'}</span>
+              </button>
+            </div>
+            <div className="sb-card sb-node-list">
+              {nodes.length === 0 && <div className="sb-node-list-empty">暂无节点，请在普通模式中添加</div>}
+              {(simpleSortDelay
+                ? [...nodes].sort((x, y) => (x.delay > 0 ? x.delay : 1e9) - (y.delay > 0 ? y.delay : 1e9))
+                : nodes
+              ).map(n => (
+                <button
+                  type="button"
+                  key={n.id}
+                  className={`sb-node-row ${n.active ? 'active' : ''}`}
+                  onClick={() => { if (!n.active) handleSimpleSelectNode(n.id); }}
+                >
+                  <span className="sb-node-check">{n.active && <Check size={14} />}</span>
+                  <span className={`proto-badge proto-${n.protocol.toLowerCase()}`}>{protoLabel(n)}</span>
+                  <span className="sb-node-row-name">{n.name}</span>
+                  <span className="sb-node-row-delay" style={{ color: delayColor(n.delay) }}>{delayText(n.delay)}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {account && account.loggedIn && (() => {

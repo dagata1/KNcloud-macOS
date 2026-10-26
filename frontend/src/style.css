@@ -2358,3 +2358,47 @@ select.win11-input option {
 .sb-usage-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
 .sb-usage-row b { color: var(--text-primary); font-weight: 600; font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace); }
 .sb-usage .simple-account-bar { margin: 0; }
+
+/* ---- 节点直接列表（替代下拉）：固定 6 行高度，其余框内滚动 ---- */
+.sb-nodes { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.sb-nodes-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; font-size: 11.5px; font-weight: 600; color: var(--text-tertiary); }
+.sb-nodes-sort { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border: none; background: transparent; font-size: 11.5px; color: var(--text-tertiary); cursor: pointer; border-radius: 6px; }
+.sb-nodes-sort:hover, .sb-nodes-sort.on { color: var(--accent); }
+.sb-card.sb-node-list { box-sizing: border-box; height: calc(6 * 36px + 10px); overflow-y: auto; padding: 5px; display: flex; flex-direction: column; gap: 0; }
+.sb-node-row { flex-shrink: 0; display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 10px 0 6px; border: none; border-radius: 9px; background: transparent; color: var(--text-primary); text-align: left; cursor: pointer; font: inherit; }
+.sb-node-row:hover { background: var(--bg-card-hover); }
+.sb-node-row.active { background: var(--accent-subtle); }
+.sb-node-check { flex-shrink: 0; width: 16px; display: grid; place-items: center; color: var(--accent); }
+.sb-node-row .proto-badge { flex-shrink: 0; padding: 2px 7px; border-radius: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; }
+.sb-node-row-name { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-node-row.active .sb-node-row-name { font-weight: 600; }
+.sb-node-row-delay { flex-shrink: 0; font-size: 11.5px; font-variant-numeric: tabular-nums; font-family: 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace; }
+.sb-node-list-empty { padding: 20px 8px; text-align: center; font-size: 12px; color: var(--text-tertiary); }
+.sb-node-list::-webkit-scrollbar { width: 6px; }
+.sb-node-list::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+
+/* ---- v3.1 精简：收紧间距与尺寸 ---- */
+.simple-body.sb-cards { gap: 10px; padding: 12px max(14px, calc((100% - 460px) / 2)) 14px; }
+.sb-card { border-radius: 14px; }
+.sb-status { gap: 14px; padding: 16px 18px 16px 16px; position: relative; overflow: hidden; }
+.sb-cards:not(.st-off) .sb-status::after {
+  content: ''; position: absolute; left: -30px; top: 50%; width: 140px; height: 140px; transform: translateY(-50%);
+  background: radial-gradient(closest-side, var(--st-subtle), transparent); pointer-events: none; z-index: 0;
+}
+.sb-status > * { position: relative; z-index: 1; }
+.sb-cards .sb-power { width: 58px; height: 58px; }
+.sb-cards .sb-power.connected { box-shadow: 0 6px 18px -6px var(--simple-ok-glow, rgba(52, 199, 89, 0.5)); }
+.sb-cards .sb-status-title { font-size: 17px; gap: 7px; }
+.sb-cards .sb-status-sub { margin-top: 3px; font-size: 11.5px; }
+.sb-speed { gap: 4px; }
+.sb-speed b { font-size: 11px; }
+.sb-cards .simple-node-trigger.sb-node { height: 50px; border-radius: 14px; padding: 0 14px 0 16px; }
+.sb-node .simple-node-name { font-size: 13.5px; }
+.sb-card.sb-account { gap: 11px; padding: 14px 14px 12px; }
+.sb-account-head { gap: 11px; padding-left: 2px; }
+.sb-account .simple-avatar { width: 32px; height: 32px; font-size: 13px; }
+.sb-usage { gap: 6px; padding: 0 2px; }
+.sb-usage .simple-account-bar { height: 5px; border-radius: 999px; }
+.sb-usage .simple-account-bar > div { border-radius: 999px; }
+.sb-account .simple-account-actions.sb-actions { padding-top: 11px; gap: 8px; }
+.sb-account .sb-actions .win11-btn { height: 32px; border-radius: 8px; font-size: 12px; }
