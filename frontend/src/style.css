@@ -2352,3 +2352,9 @@ select.win11-input option {
 .app-window:not(.dark-theme) .sb-account .sb-actions .win11-btn.danger { background: rgba(200, 40, 40, 0.08); border-color: rgba(200, 40, 40, 0.18); }
 .sb-account .sb-actions .win11-btn.danger:hover:not(:disabled) { background: rgba(255, 107, 107, 0.2); }
 .sb-account .simple-account-actions.sb-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* 账户卡内流量横条（与旧版一致：已用 / 百分比 · 总量 + 进度条） */
+.sb-usage { display: flex; flex-direction: column; gap: 7px; padding: 0 4px; }
+.sb-usage-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
+.sb-usage-row b { color: var(--text-primary); font-weight: 600; font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace); }
+.sb-usage .simple-account-bar { margin: 0; }

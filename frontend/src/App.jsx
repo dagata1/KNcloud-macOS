@@ -1423,36 +1423,8 @@ export default function App() {
             const total = account.transferEnable || 0;
             const limited = total > 0;
             const pct = limited ? Math.min(100, (used * 100) / total) : 0;
-            const remain = limited ? Math.max(0, total - used) : 0;
-            const R = 27;
-            const C = 2 * Math.PI * R;
             return (
               <>
-                {/* 流量卡：圆环百分比 + 已用 + 共 / 剩余（剩余 = 总量 − 已用，均来自账户数据） */}
-                <div className="sb-card sb-traffic">
-                  <div className="sb-ring">
-                    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
-                      <circle className="sb-ring-track" cx="32" cy="32" r={R} />
-                      {limited && pct > 0 && (
-                        <circle
-                          className="sb-ring-val"
-                          cx="32" cy="32" r={R}
-                          strokeDasharray={`${(C * pct) / 100} ${C}`}
-                          transform="rotate(-90 32 32)"
-                        />
-                      )}
-                    </svg>
-                    <b>{limited ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%` : '∞'}</b>
-                  </div>
-                  <div className="sb-traffic-info">
-                    <div className="sb-label">本期流量</div>
-                    <div className="sb-traffic-used">{fmtGB(used)}</div>
-                    <div className="sb-traffic-sub">
-                      {limited ? `共 ${fmtGB(total)} · 剩余 ${fmtGB(remain)}` : '不限流量'}
-                    </div>
-                  </div>
-                </div>
-
                 {/* 账户卡 */}
                 <div className="sb-card sb-account">
                   <div className="sb-account-head">
@@ -1462,6 +1434,13 @@ export default function App() {
                     <div className="simple-account-expire">{account.expire}</div>
                   </div>
                   <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
+                  </div>
+                  <div className="sb-usage">
+                    <div className="sb-usage-row">
+                      <span>已用 <b>{fmtGB(used)}</b></span>
+                      <span>{limited ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% · 共 ${fmtGB(total)}` : '不限流量'}</span>
+                    </div>
+                    {limited && <div className="simple-account-bar"><div style={{ width: `${pct}%` }} /></div>}
                   </div>
                   <div className="simple-account-actions sb-actions">
                     <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
