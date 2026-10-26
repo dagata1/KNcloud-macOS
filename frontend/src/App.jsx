@@ -1263,9 +1263,11 @@ export default function App() {
     if (r) {
       const margin = 12;
       const below = window.innerHeight - r.bottom - 6 - margin;
-      const above = r.top - 6 - margin - 40; // 40 = 标题栏
+      // 上方以标题栏底边为界（实测 DOM，不写死 40），菜单顶边至少离标题栏 margin
+      const barBottom = document.querySelector('.titlebar')?.getBoundingClientRect().bottom ?? 40;
+      const above = r.top - 6 - margin - barBottom;
       if (below < 200 && above > below) {
-        setNodeMenuStyle({ top: 'auto', bottom: 'calc(100% + 6px)', maxHeight: Math.max(120, Math.min(360, above)) });
+        setNodeMenuStyle({ top: 'auto', bottom: 'calc(100% + 6px)', maxHeight: Math.max(0, Math.min(360, above)) });
       } else {
         setNodeMenuStyle({ maxHeight: Math.max(120, Math.min(360, below)) });
       }
