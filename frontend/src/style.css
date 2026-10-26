@@ -2058,7 +2058,7 @@ select.win11-input option {
 
 .sb-cards > * { flex-shrink: 0; }
 /* 内容不足一屏时整体垂直居中（auto 外边距不会在内容超高时把顶部裁掉） */
-.sb-cards > .sb-status { margin-top: auto; }
+.sb-cards > :first-child { margin-top: auto; }
 .sb-cards > :last-child { margin-bottom: auto; }
 .sb-card {
   border-radius: 12px;

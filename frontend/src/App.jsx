@@ -1283,6 +1283,45 @@ export default function App() {
           </div>
         )}
         <div className={`simple-body sb-cards st-${simpleState}`}>
+          {account && account.loggedIn && (() => {
+            const used = (account.usedUp || 0) + (account.usedDown || 0);
+            const total = account.transferEnable || 0;
+            const limited = total > 0;
+            const pct = limited ? Math.min(100, (used * 100) / total) : 0;
+            return (
+              <>
+                {/* 账户卡 */}
+                <div className="sb-card sb-account">
+                  <div className="sb-account-head">
+                  <div className="simple-avatar">{(account.email || 'K').slice(0, 1).toUpperCase()}</div>
+                  <div className="simple-account-id">
+                    <div className="simple-account-email">{account.email}</div>
+                    <div className="simple-account-expire">{account.expire}</div>
+                  </div>
+                  <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
+                  </div>
+                  <div className="sb-usage">
+                    <div className="sb-usage-row">
+                      <span>已用 <b>{fmtGB(used)}</b></span>
+                      <span>{limited ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% · 共 ${fmtGB(total)}` : '不限流量'}</span>
+                    </div>
+                    {limited && <div className="simple-account-bar"><div style={{ width: `${pct}%` }} /></div>}
+                  </div>
+                  <div className="simple-account-actions sb-actions">
+                    <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
+                      <RefreshCw size={13} className={syncing ? 'spin' : ''} />
+                      <span>{syncing ? '更新中…' : '更新订阅'}</span>
+                    </button>
+                    <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
+                      <LogOut size={13} />
+                      <span>退出登录</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
           {/* 状态卡：电源键 + 连接状态 + 实时速度（仅在连接时显示后端上报的真实速率） */}
           <div className="sb-card sb-status">
             <button
@@ -1329,27 +1368,9 @@ export default function App() {
 
           {/* 节点卡：固定单行，点击打开节点下拉（菜单以本容器为定位基准计算上下空间） */}
           <div className="sb-nodes">
-            <div className="sb-nodes-head">
-              <span>节点 · 共 {nodes.length} 个</span>
-              <button
-                type="button"
-                className={`sb-nodes-sort ${simpleSortDelay ? 'on' : ''}`}
-                onClick={() => {
-                  setSimpleSortDelay(v => !v);
-                  // 切换排序时顺带后台重测（60 秒节流），结果逐个回写到列表
-                  if (Date.now() - lastMenuPingAt > 60000) { lastMenuPingAt = Date.now(); StartAutoPing().catch(() => {}); }
-                }}
-              >
-                <ArrowUpDown size={12} />
-                <span>{simpleSortDelay ? '按延迟排序' : '默认排序'}</span>
-              </button>
-            </div>
             <div className="sb-card sb-node-list">
               {nodes.length === 0 && <div className="sb-node-list-empty">暂无节点，请在普通模式中添加</div>}
-              {(simpleSortDelay
-                ? [...nodes].sort((x, y) => (x.delay > 0 ? x.delay : 1e9) - (y.delay > 0 ? y.delay : 1e9))
-                : nodes
-              ).map(n => (
+              {nodes.map(n => (
                 <button
                   type="button"
                   key={n.id}
@@ -1364,45 +1385,6 @@ export default function App() {
               ))}
             </div>
           </div>
-
-          {account && account.loggedIn && (() => {
-            const used = (account.usedUp || 0) + (account.usedDown || 0);
-            const total = account.transferEnable || 0;
-            const limited = total > 0;
-            const pct = limited ? Math.min(100, (used * 100) / total) : 0;
-            return (
-              <>
-                {/* 账户卡 */}
-                <div className="sb-card sb-account">
-                  <div className="sb-account-head">
-                  <div className="simple-avatar">{(account.email || 'K').slice(0, 1).toUpperCase()}</div>
-                  <div className="simple-account-id">
-                    <div className="simple-account-email">{account.email}</div>
-                    <div className="simple-account-expire">{account.expire}</div>
-                  </div>
-                  <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
-                  </div>
-                  <div className="sb-usage">
-                    <div className="sb-usage-row">
-                      <span>已用 <b>{fmtGB(used)}</b></span>
-                      <span>{limited ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% · 共 ${fmtGB(total)}` : '不限流量'}</span>
-                    </div>
-                    {limited && <div className="simple-account-bar"><div style={{ width: `${pct}%` }} /></div>}
-                  </div>
-                  <div className="simple-account-actions sb-actions">
-                    <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
-                      <RefreshCw size={13} className={syncing ? 'spin' : ''} />
-                      <span>{syncing ? '更新中…' : '更新订阅'}</span>
-                    </button>
-                    <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
-                      <LogOut size={13} />
-                      <span>退出登录</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            );
-          })()}
         </div>
       </div>
     );
