@@ -2340,3 +2340,14 @@ select.win11-input option {
 .app-window:not(.dark-theme) .sb-actions .win11-btn.danger { color: #c42b1c; background: rgba(196, 43, 28, 0.08); }
 .sb-actions .win11-btn.danger:hover:not(:disabled) { background: rgba(255, 107, 107, 0.2); border-color: transparent; }
 .app-window:not(.dark-theme) .sb-actions .win11-btn.danger:hover:not(:disabled) { background: rgba(196, 43, 28, 0.14); }
+
+/* 账户卡内嵌操作按钮（与旧版一致：账号与更新订阅/测试节点/退出登录同卡） */
+.sb-card.sb-account { flex-direction: column; align-items: stretch; gap: 12px; padding: 15px 14px; }
+.sb-account-head { display: flex; align-items: center; gap: 12px; min-width: 0; padding-left: 4px; }
+.sb-account .simple-account-actions.sb-actions { padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.sb-account .sb-actions .win11-btn { height: 34px; box-shadow: none; background: transparent; }
+.app-window:not(.dark-theme) .sb-account .sb-actions .win11-btn { background: transparent; }
+.sb-account .sb-actions .win11-btn:hover:not(:disabled) { background: var(--bg-card-hover); }
+.sb-account .sb-actions .win11-btn.danger { background: rgba(255, 107, 107, 0.12); border-color: rgba(255, 107, 107, 0.22); }
+.app-window:not(.dark-theme) .sb-account .sb-actions .win11-btn.danger { background: rgba(200, 40, 40, 0.08); border-color: rgba(200, 40, 40, 0.18); }
+.sb-account .sb-actions .win11-btn.danger:hover:not(:disabled) { background: rgba(255, 107, 107, 0.2); }

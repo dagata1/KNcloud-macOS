@@ -1447,28 +1447,28 @@ export default function App() {
 
                 {/* 账户卡 */}
                 <div className="sb-card sb-account">
+                  <div className="sb-account-head">
                   <div className="simple-avatar">{(account.email || 'K').slice(0, 1).toUpperCase()}</div>
                   <div className="simple-account-id">
                     <div className="simple-account-email">{account.email}</div>
                     <div className="simple-account-expire">{account.expire}</div>
                   </div>
                   <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
-                </div>
-
-                {/* 操作按钮 */}
-                <div className="simple-account-actions sb-actions">
-                  <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
-                    <RefreshCw size={13} className={syncing ? 'spin' : ''} />
-                    <span>{syncing ? '更新中…' : '更新订阅'}</span>
-                  </button>
-                  <button className="win11-btn" onClick={handlePingAll} disabled={isPingingAll} title={isPingingAll ? '测速中…' : '测试节点'} aria-label="测试节点">
-                    <Gauge size={13} />
-                    <span>{isPingingAll ? '测速中…' : '测试节点'}</span>
-                  </button>
-                  <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
-                    <LogOut size={13} />
-                    <span>退出登录</span>
-                  </button>
+                  </div>
+                  <div className="simple-account-actions sb-actions">
+                    <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
+                      <RefreshCw size={13} className={syncing ? 'spin' : ''} />
+                      <span>{syncing ? '更新中…' : '更新订阅'}</span>
+                    </button>
+                    <button className="win11-btn" onClick={handlePingAll} disabled={isPingingAll} title={isPingingAll ? '测速中…' : '测试节点'} aria-label="测试节点">
+                      <Gauge size={13} />
+                      <span>{isPingingAll ? '测速中…' : '测试节点'}</span>
+                    </button>
+                    <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
+                      <LogOut size={13} />
+                      <span>退出登录</span>
+                    </button>
+                  </div>
                 </div>
               </>
             );
