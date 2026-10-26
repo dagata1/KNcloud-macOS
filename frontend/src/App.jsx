@@ -45,6 +45,29 @@ import {
 } from '../wailsjs/go/main/App';
 import { EventsOn, WindowSetSize, WindowUnmaximise, BrowserOpenURL, WindowGetSize, WindowGetPosition, WindowSetPosition } from '../wailsjs/runtime';
 
+// 简洁模式速度曲线：保留最近 SPARK_N 个采样（状态每 2 秒轮询一次）
+const SPARK_N = 30;
+const parseSpeed = (str) => {
+  const m = /([\d.]+)\s*(B|KB|MB|GB)/i.exec(str || '');
+  if (!m) return 0;
+  const k = { B: 1, KB: 1024, MB: 1048576, GB: 1073741824 }[m[2].toUpperCase()] || 1;
+  return parseFloat(m[1]) * k;
+};
+function Spark({ data }) {
+  const W = 100, H = 30;
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const step = W / (SPARK_N - 1);
+  const pts = data.map((v, i) => [W - (data.length - 1 - i) * step, H - 1.5 - (v / max) * (H - 8)]);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ');
+  const area = `${line} L${W} ${H} L${pts[0][0].toFixed(2)} ${H} Z`;
+  return (
+    <svg className="sb-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+      <path className="area" d={area} />
+      <path className="ln" d={line} />
+    </svg>
+  );
+}
 const protoLabel = (n) => (n.protocol === 'HTTP' && n.security === 'tls') ? 'HTTPS' : n.protocol;
 
 
@@ -142,6 +165,14 @@ export default function App() {
   // 简易模式自定义节点下拉是否展开
   const [nodeMenuOpen, setNodeMenuOpen] = useState(false);
   const [simpleSortDelay, setSimpleSortDelay] = useState(false); // 简洁模式节点列表：按延迟排序
+  const [speedHist, setSpeedHist] = useState({ up: [], down: [] }); // 简洁模式连接卡速度曲线
+  useEffect(() => {
+    if (!status.running) { setSpeedHist({ up: [], down: [] }); return; }
+    setSpeedHist(h => ({
+      up: [...h.up, parseSpeed(status.upSpeed)].slice(-SPARK_N),
+      down: [...h.down, parseSpeed(status.downSpeed)].slice(-SPARK_N),
+    }));
+  }, [status]);
   const [nodeMenuStyle, setNodeMenuStyle] = useState({});
   // 首次从后端取到数据前显示启动页，避免按默认 uiMode 闪出空的简易模式界面
   const [booted, setBooted] = useState(false);
@@ -1322,47 +1353,65 @@ export default function App() {
             );
           })()}
 
-          {/* 状态卡：电源键 + 连接状态 + 实时速度（仅在连接时显示后端上报的真实速率） */}
-          <div className="sb-card sb-status">
-            <button
-              className={[
-                'simple-power-btn',
-                'sb-power',
-                simpleState === 'ok' ? 'connected' : '',
-                simpleState === 'checking' ? 'connecting' : '',
-                simpleState === 'fail' ? 'failed' : '',
-              ].filter(Boolean).join(' ')}
-              onClick={handleSimpleConnect}
-              title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
-            >
-              <Power size={28} strokeWidth={2.2} />
-            </button>
-            <div className="sb-status-info">
-              <div className={`simple-status-text sb-status-title ${simpleState === 'checking' ? 'checking' : ''}`}>
-                <span className="sb-dot" />
-                <span>
-                  {simpleState === 'off'
-                    ? '未连接'
-                    : simpleState === 'checking'
-                      ? '正在连接…'
-                      : simpleState === 'fail'
-                        ? '连接失败'
-                        : simpleState === 'none'
-                          ? '未选择节点'
-                          : '已连接'}
-                </span>
+          {/* 连接卡：带呼吸光环的电源键 + 状态/模式/当前节点，下方上下行实时速度（带最近 1 分钟曲线） */}
+          <div className="sb-card sb-status sb-hero">
+            <div className="sb-hero-top">
+              <div className="sb-power-wrap">
+                <span className="sb-power-ring" />
+                <button
+                  className={[
+                    'simple-power-btn',
+                    'sb-power',
+                    simpleState === 'ok' ? 'connected' : '',
+                    simpleState === 'checking' ? 'connecting' : '',
+                    simpleState === 'fail' ? 'failed' : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={handleSimpleConnect}
+                  title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
+                >
+                  <Power size={30} strokeWidth={2.2} />
+                </button>
               </div>
-              <div className="simple-status-sub sb-status-sub">
-                {simpleState === 'off'
-                  ? '点击左侧按钮开始连接'
-                  : simpleState === 'fail'
-                    ? '请更换节点后重试'
-                    : (status.tunnelMode ? 'TUN 模式 · 全局接管' : '智能分流 · 绕过大陆')}
+              <div className="sb-status-info">
+                  <div className={`simple-status-text sb-status-title ${simpleState === 'checking' ? 'checking' : ''}`}>
+                    <span className="sb-dot" />
+                    <span>
+                      {simpleState === 'off'
+                        ? '未连接'
+                        : simpleState === 'checking'
+                          ? '正在连接…'
+                          : simpleState === 'fail'
+                            ? '连接失败'
+                            : simpleState === 'none'
+                              ? '未选择节点'
+                              : '已连接'}
+                    </span>
+                  </div>
+                <div className="sb-hero-meta">
+                  {simpleOn && <span className="sb-chip">{status.tunnelMode ? 'TUN 全局' : '智能分流'}</span>}
+                  <span className="sb-hero-sub">
+                    {simpleState === 'off'
+                      ? '点击左侧按钮开始连接'
+                      : simpleState === 'fail'
+                        ? '请更换节点后重试'
+                        : simpleState === 'none'
+                          ? '请在下方选择节点'
+                          : (activeNode ? activeNode.name : '')}
+                  </span>
+                  {simpleState === 'ok' && activeNode && activeNode.delay > 0 && (
+                    <span className="sb-hero-delay" style={{ color: delayColor(activeNode.delay) }}>{activeNode.delay}ms</span>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="sb-speed" title="仅统计经代理节点的流量">
-              <span><ArrowUpRight size={12} /><b>{simpleOn && status.upSpeed ? status.upSpeed : '– –'}</b></span>
-              <span><ArrowDownLeft size={12} /><b>{simpleOn && status.downSpeed ? status.downSpeed : '– –'}</b></span>
+            <div className="sb-hero-speeds" title="仅统计经代理节点的流量">
+              {[['up', '上传', ArrowUpRight, status.upSpeed], ['down', '下载', ArrowDownLeft, status.downSpeed]].map(([k, label, Icon, val]) => (
+                <div key={k} className={`sb-speed-tile ${k}`}>
+                  <Spark data={simpleOn ? speedHist[k] : []} />
+                  <div className="sb-speed-label"><Icon size={12} />{label}</div>
+                  <div className="sb-speed-val">{simpleOn && val ? val : '– –'}</div>
+                </div>
+              ))}
             </div>
           </div>
 

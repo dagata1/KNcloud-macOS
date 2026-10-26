@@ -2408,3 +2408,36 @@ select.win11-input option {
 .sb-cards > :last-child { margin-bottom: 0; }
 .sb-cards > .sb-nodes { flex: 1 1 auto; min-height: calc(4 * 36px + 10px); }
 .sb-card.sb-node-list { flex: 1 1 auto; height: auto; min-height: 0; }
+
+/* ---- 连接卡 v4：光环电源键 + 模式胶囊 + 速度曲线 ---- */
+.sb-status.sb-hero { flex-direction: column; align-items: stretch; gap: 14px; padding: 18px 16px 14px; }
+.sb-hero-top { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.sb-cards:not(.st-off) .sb-status.sb-hero::after { left: -46px; top: 52px; width: 190px; height: 190px; }
+.sb-power-wrap { position: relative; flex-shrink: 0; width: 64px; height: 64px; display: grid; place-items: center; }
+.sb-cards .sb-power-wrap .sb-power { width: 64px; height: 64px; position: relative; z-index: 1; }
+.sb-power-ring { position: absolute; inset: -6px; border-radius: 50%; border: 1.5px solid var(--st-border); opacity: 0; pointer-events: none; }
+.sb-cards.st-ok .sb-power-ring { opacity: 1; animation: sbBreath 2.8s ease-in-out infinite; }
+.sb-cards.st-checking .sb-power-ring { opacity: 1; border-color: transparent; border-top-color: var(--accent); border-right-color: var(--accent); animation: sbSpin 0.9s linear infinite; }
+.sb-cards.st-fail .sb-power-ring, .sb-cards.st-none .sb-power-ring { opacity: 1; }
+@keyframes sbBreath { 0%, 100% { transform: scale(1); opacity: 0.95; } 50% { transform: scale(1.13); opacity: 0.2; } }
+@keyframes sbSpin { to { transform: rotate(360deg); } }
+.sb-hero-meta { display: flex; align-items: center; gap: 7px; margin-top: 7px; min-width: 0; font-size: 12px; color: var(--text-secondary); }
+.sb-chip { flex-shrink: 0; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 16px; color: var(--st); background: var(--st-subtle); border: 1px solid var(--st-border); }
+.sb-hero-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-hero-delay { flex-shrink: 0; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.sb-hero-speeds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sb-speed-tile { --c: var(--accent); position: relative; overflow: hidden; min-width: 0; padding: 9px 12px 12px; border-radius: 11px; background: rgba(255, 255, 255, 0.035); border: 1px solid var(--border-subtle); }
+.app-window:not(.dark-theme) .sb-speed-tile { background: #f6f7f9; }
+.sb-speed-tile.down { --c: var(--simple-ok, #2fbf71); }
+.sb-cards.st-off .sb-speed-tile { --c: var(--text-tertiary); }
+.sb-speed-label { position: relative; z-index: 1; display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-tertiary); }
+.sb-speed-label svg { color: var(--c); }
+.sb-speed-val { position: relative; z-index: 1; margin-top: 3px; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
+.sb-cards.st-off .sb-speed-val { color: var(--text-tertiary); }
+.sb-spark { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 30px; color: var(--c); pointer-events: none; }
+.sb-spark .area { fill: currentColor; opacity: 0.13; }
+.sb-spark .ln { fill: none; stroke: currentColor; stroke-width: 1.5; opacity: 0.85; vector-effect: non-scaling-stroke; }
+@media (prefers-reduced-motion: reduce) { .sb-power-ring { animation: none !important; } }
+.sb-speed-tile { padding: 8px 12px 22px; }
+.sb-spark { height: 20px; }
+.sb-spark .ln { opacity: 0.75; }
