@@ -108,6 +108,9 @@ function SimpleCloudIcon() {
 const PREF_KEYS = ['socksPort', 'httpPort', 'allowLan', 'muxEnabled', 'coreType', 'dnsServers', 'autoStart', 'minimizeToTray', 'subUpdateHours'];
 const prefSig = (s) => JSON.stringify(PREF_KEYS.map(k => (s || {})[k] ?? null));
 
+// 简洁模式节点菜单上次触发后台测速的时间（模块级，不受组件早返回影响）
+let lastMenuPingAt = 0;
+
 export default function App() {
   // 运行平台（Go 端 GetPlatform）：macOS 上替换 Windows 专属文案（托盘、管理员、开机自启）
   const [platform, setPlatform] = useState('windows');
@@ -1256,6 +1259,11 @@ export default function App() {
   // 简易模式节点下拉：按窗口剩余空间限高，下方放不下时向上展开，保证能滚到最后一个节点
   const toggleNodeMenu = () => {
     if (nodeMenuOpen) { setNodeMenuOpen(false); return; }
+    // 打开节点菜单时在后台测速全部节点（结果经 kncloud:node-delay 逐个刷新到菜单里），60 秒内不重复触发
+    if (Date.now() - lastMenuPingAt > 60000) {
+      lastMenuPingAt = Date.now();
+      StartAutoPing().catch(() => {});
+    }
     // 菜单是相对外层容器（含「当前节点」标签）定位的，不是相对按钮本身；
     // 必须用容器的边界来算可用空间，否则向上展开时会多出标签高度而顶到标题栏下面
     const el = nodeTriggerRef.current;
