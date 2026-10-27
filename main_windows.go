@@ -32,7 +32,7 @@ func main() {
 	// （窗口默认按 classic 尺寸创建，简易模式/登录页会先显示大窗口再缩小）
 	width, height := 1120, 760
 	if !app.account.LoggedIn || app.settings.UiMode == "simple" {
-		width, height = 420, 640
+		width, height = 420, 525
 	}
 
 	// 未运行时由 kncloud:// 协议直接启动：窗口就绪后处理链接
@@ -45,7 +45,7 @@ func main() {
 		Width:     width,
 		Height:    height,
 		MinWidth:  380, // 简易模式需要缩到紧凑尺寸（前端切换模式时自动调整）
-		MinHeight: 560,
+		MinHeight: 500,
 		Frameless: true, // 自定义 Win11 沉浸式标题栏
 		AssetServer: &assetserver.Options{
 			Assets: assets,

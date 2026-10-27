@@ -2481,3 +2481,7 @@ select.win11-input option {
 .sb-node-row-name { font-size: 13px; }
 .sb-node-row-delay { font-size: 11px; opacity: 0.85; }
 .sb-cards > .sb-nodes { min-height: calc(4 * 40px + 12px); }
+
+/* 节点列表固定 5 行高，不再撑满窗口 */
+.sb-cards > .sb-nodes { flex: 0 0 auto; min-height: 0; }
+.sb-card.sb-node-list { flex: 0 0 auto; height: calc(5 * 40px + 12px); }
