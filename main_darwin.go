@@ -44,7 +44,7 @@ func main() {
 
 	width, height := 920, 580 // Mac 普通模式：窄且矮，刚好装下仪表盘内容
 	if !app.account.LoggedIn || app.settings.UiMode == "simple" {
-		width, height = 420, 525
+		width, height = 420, 505
 	}
 
 	if link := findDeepLinkArg(os.Args[1:]); link != "" {
