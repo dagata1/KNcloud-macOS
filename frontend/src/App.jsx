@@ -88,18 +88,25 @@ const prefSig = (s) => JSON.stringify(PREF_KEYS.map(k => (s || {})[k] ?? null));
 
 // 简洁模式节点菜单上次触发后台测速的时间（模块级，不受组件早返回影响）
 let lastMenuPingAt = 0;
+// 平台只查一次：窗口尺寸在启动加载里就要用，不能等 React state 从默认 'windows' 更新过来
+let platformPromise = null;
+const getPlatformOnce = () => (platformPromise ||= GetPlatform().catch(() => null));
 
 export default function App() {
   // 运行平台（Go 端 GetPlatform）：macOS 上替换 Windows 专属文案（托盘、管理员、开机自启）
   const [platform, setPlatform] = useState('windows');
-  useEffect(() => { GetPlatform().then(p => p && setPlatform(p)).catch(() => {}); }, []);
+  useEffect(() => { getPlatformOnce().then(p => p && setPlatform(p)); }, []);
   const isMac = platform === 'darwin';
   const productName = isMac ? 'KNcloud' : 'KNcloud-WIN';
   // 简易模式内容少，窗口切到紧凑尺寸；普通模式恢复默认大小
   // （全局最小尺寸在 main.go 里放开了到 380x500，这里的目标值在其之上）
-  const WINDOW_SIZE = { simple: { w: 420, h: 505 }, classic: isMac ? { w: 920, h: 580 } : { w: 1120, h: 760 } };
+  // macOS 顶部多一条约 30px 的标题栏区域，简易模式窗口相应加高，节点列表底部留白才与左右边距一致
+  const windowSizes = (mac) => ({ simple: mac ? { w: 420, h: 530 } : { w: 420, h: 505 }, classic: mac ? { w: 920, h: 580 } : { w: 1120, h: 760 } });
   const applyWindowSize = async (mode, keepCenter = false) => {
-    const s = WINDOW_SIZE[mode] || WINDOW_SIZE.classic;
+    // 启动加载时 isMac 可能还是默认值，这里以 Go 端返回的平台为准
+    const mac = ((await getPlatformOnce()) || platform) === 'darwin';
+    const sizes = windowSizes(mac);
+    const s = sizes[mode] || sizes.classic;
     // 窗口处于最大化时 SetSize 不生效，会一直停在大尺寸；先还原成普通窗口
     try { await WindowUnmaximise(); } catch (e) { /* 未最大化时忽略 */ }
     // Mac 切换简易 / 普通模式：以窗口中心为固定点缩放，而不是固定某个角
