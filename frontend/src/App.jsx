@@ -95,8 +95,8 @@ export default function App() {
   const isMac = platform === 'darwin';
   const productName = isMac ? 'KNcloud' : 'KNcloud-WIN';
   // 简易模式内容少，窗口切到紧凑尺寸；普通模式恢复默认大小
-  // （全局最小尺寸在 main.go 里放开了到 380x560，这里的目标值在其之上）
-  const WINDOW_SIZE = { simple: { w: 420, h: 525 }, classic: isMac ? { w: 920, h: 580 } : { w: 1120, h: 760 } };
+  // （全局最小尺寸在 main.go 里放开了到 380x500，这里的目标值在其之上）
+  const WINDOW_SIZE = { simple: { w: 420, h: 505 }, classic: isMac ? { w: 920, h: 580 } : { w: 1120, h: 760 } };
   const applyWindowSize = async (mode, keepCenter = false) => {
     const s = WINDOW_SIZE[mode] || WINDOW_SIZE.classic;
     // 窗口处于最大化时 SetSize 不生效，会一直停在大尺寸；先还原成普通窗口
