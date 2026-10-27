@@ -2441,3 +2441,23 @@ select.win11-input option {
 .sb-speed-tile { padding: 8px 12px 22px; }
 .sb-spark { height: 20px; }
 .sb-spark .ln { opacity: 0.75; }
+
+/* ---- 连接卡 v5（紧凑）：盾牌图标 + 一行速度/节点 + 开关 ---- */
+.sb-status.sb-compact { flex-direction: row; align-items: center; gap: 13px; padding: 14px 16px 14px 14px; }
+.sb-shield { flex-shrink: 0; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; color: var(--text-tertiary); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-subtle); transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+.app-window:not(.dark-theme) .sb-shield { background: #f3f4f6; }
+.sb-cards:not(.st-off) .sb-shield, .app-window:not(.dark-theme) .sb-cards:not(.st-off) .sb-shield { color: var(--st); background: var(--st-subtle); border-color: transparent; }
+.sb-cards .sb-compact .sb-status-title { font-size: 16px; letter-spacing: 0.2px; }
+.sb-cards.st-ok .sb-compact .sb-status-title { color: var(--text-primary); }
+.sb-compact-sub { display: flex; align-items: center; gap: 7px; margin-top: 4px; min-width: 0; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.sb-sp { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.sb-sep { flex-shrink: 0; color: var(--text-tertiary); }
+.sb-compact-node { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sb-switch { flex-shrink: 0; position: relative; width: 50px; height: 28px; padding: 0; border: none; border-radius: 999px; cursor: pointer; background: rgba(255, 255, 255, 0.16); transition: background 0.25s ease; }
+.app-window:not(.dark-theme) .sb-switch { background: #d5d8de; }
+.sb-switch.on, .app-window:not(.dark-theme) .sb-switch.on { background: var(--st, var(--accent)); }
+.sb-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sb-switch-thumb { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.25s cubic-bezier(0.3, 0.7, 0.4, 1.2); }
+.sb-switch.on .sb-switch-thumb { transform: translateX(22px); }
+.sb-switch.busy .sb-switch-thumb::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; border: 2px solid var(--st, var(--accent)); border-top-color: transparent; animation: sbSpin 0.8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .sb-switch-thumb { transition: none; } .sb-switch.busy .sb-switch-thumb::after { animation: none; } }

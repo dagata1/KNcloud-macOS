@@ -1353,66 +1353,53 @@ export default function App() {
             );
           })()}
 
-          {/* 连接卡：带呼吸光环的电源键 + 状态/模式/当前节点，下方上下行实时速度（带最近 1 分钟曲线） */}
-          <div className="sb-card sb-status sb-hero">
-            <div className="sb-hero-top">
-              <div className="sb-power-wrap">
-                <span className="sb-power-ring" />
-                <button
-                  className={[
-                    'simple-power-btn',
-                    'sb-power',
-                    simpleState === 'ok' ? 'connected' : '',
-                    simpleState === 'checking' ? 'connecting' : '',
-                    simpleState === 'fail' ? 'failed' : '',
-                  ].filter(Boolean).join(' ')}
-                  onClick={handleSimpleConnect}
-                  title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
-                >
-                  <Power size={30} strokeWidth={2.2} />
-                </button>
+          {/* 连接卡（紧凑）：盾牌图标 + 状态 + 一行上下行速度/节点/延迟，右侧开关 */}
+          <div className="sb-card sb-status sb-compact" title={simpleOn ? (status.tunnelMode ? '模式：TUN 全局' : '模式：智能分流') : undefined}>
+            <div className="sb-shield"><Shield size={20} strokeWidth={2.2} /></div>
+            <div className="sb-status-info">
+              <div className={`simple-status-text sb-status-title ${simpleState === 'checking' ? 'checking' : ''}`}>
+                {simpleState === 'off'
+                  ? '未连接'
+                  : simpleState === 'checking'
+                    ? '正在连接…'
+                    : simpleState === 'fail'
+                      ? '连接失败'
+                      : simpleState === 'none'
+                        ? '未选择节点'
+                        : '已连接'}
               </div>
-              <div className="sb-status-info">
-                  <div className={`simple-status-text sb-status-title ${simpleState === 'checking' ? 'checking' : ''}`}>
-                    <span className="sb-dot" />
-                    <span>
-                      {simpleState === 'off'
-                        ? '未连接'
-                        : simpleState === 'checking'
-                          ? '正在连接…'
-                          : simpleState === 'fail'
-                            ? '连接失败'
-                            : simpleState === 'none'
-                              ? '未选择节点'
-                              : '已连接'}
-                    </span>
-                  </div>
-                <div className="sb-hero-meta">
-                  {simpleOn && <span className="sb-chip">{status.tunnelMode ? 'TUN 全局' : '智能分流'}</span>}
-                  <span className="sb-hero-sub">
+              <div className="sb-compact-sub" title="上下行仅统计经代理节点的流量">
+                {simpleState === 'ok' ? (
+                  <>
+                    <span className="sb-sp">↑ {status.upSpeed || '0 B/s'}</span>
+                    <span className="sb-sp">↓ {status.downSpeed || '0 B/s'}</span>
+                    <span className="sb-sep">·</span>
+                    <span className="sb-compact-node">{activeNode ? activeNode.name : ''}{activeNode && activeNode.delay > 0 ? ` ${activeNode.delay}ms` : ''}</span>
+                  </>
+                ) : (
+                  <span className="sb-compact-node">
                     {simpleState === 'off'
-                      ? '点击左侧按钮开始连接'
+                      ? `打开右侧开关开始连接${activeNode ? ' · ' + activeNode.name : ''}`
                       : simpleState === 'fail'
                         ? '请更换节点后重试'
                         : simpleState === 'none'
                           ? '请在下方选择节点'
                           : (activeNode ? activeNode.name : '')}
                   </span>
-                  {simpleState === 'ok' && activeNode && activeNode.delay > 0 && (
-                    <span className="sb-hero-delay" style={{ color: delayColor(activeNode.delay) }}>{activeNode.delay}ms</span>
-                  )}
-                </div>
+                )}
               </div>
             </div>
-            <div className="sb-hero-speeds" title="仅统计经代理节点的流量">
-              {[['up', '上传', ArrowUpRight, status.upSpeed], ['down', '下载', ArrowDownLeft, status.downSpeed]].map(([k, label, Icon, val]) => (
-                <div key={k} className={`sb-speed-tile ${k}`}>
-                  <Spark data={simpleOn ? speedHist[k] : []} />
-                  <div className="sb-speed-label"><Icon size={12} />{label}</div>
-                  <div className="sb-speed-val">{simpleOn && val ? val : '– –'}</div>
-                </div>
-              ))}
-            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={simpleOn}
+              aria-label="连接开关"
+              className={['sb-switch', (simpleOn || simpleState === 'checking') ? 'on' : '', simpleState === 'checking' ? 'busy' : ''].filter(Boolean).join(' ')}
+              onClick={handleSimpleConnect}
+              title={simpleOn ? '点击断开连接' : '点击开启分流代理（绕过大陆）'}
+            >
+              <span className="sb-switch-thumb" />
+            </button>
           </div>
 
           {/* 节点卡：固定单行，点击打开节点下拉（菜单以本容器为定位基准计算上下空间） */}
