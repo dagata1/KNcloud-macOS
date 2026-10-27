@@ -3,7 +3,7 @@ import kncFgWhite from './assets/knc-fg-white.png';
 import kncLoginDark from './assets/knc-login-dark.png';
 import kncLoginLight from './assets/knc-login-light.png';
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Activity, Server, GitFork, BookOpen, Terminal, Settings, Menu, Sun, Moon, Monitor, Minus, Square, X, Play, Pause, RefreshCw, Plus, Trash2, Zap, Globe, ArrowUpRight, ArrowDownLeft, CheckCircle2, Sliders, Search, Check, Copy, Pencil, ChevronDown, LayoutGrid, SlidersHorizontal, FolderInput, LoaderCircle, Gauge, LogOut, CircleHelp, ChevronLeft, ChevronRight, Plug, Wifi, Cpu, Layers, Power, Info } from 'lucide-react';
+import { Shield, Activity, Server, GitFork, BookOpen, Terminal, Settings, Menu, Sun, Moon, Monitor, Minus, Square, X, Play, Pause, RefreshCw, Plus, Trash2, Zap, Globe, ArrowUpRight, ArrowDownLeft, CheckCircle2, Sliders, Search, Check, Copy, Pencil, ChevronDown, LayoutGrid, SlidersHorizontal, FolderInput, LoaderCircle, Gauge, LogOut, CircleHelp, ChevronLeft, ChevronRight, Plug, Wifi, Cpu, Layers, Power, Info, ArrowUpDown, Cloud } from 'lucide-react';
 
 import {
   GetNodes,
@@ -45,6 +45,29 @@ import {
 } from '../wailsjs/go/main/App';
 import { EventsOn, WindowSetSize, WindowUnmaximise, BrowserOpenURL, WindowGetSize, WindowGetPosition, WindowSetPosition } from '../wailsjs/runtime';
 
+// 简洁模式速度曲线：保留最近 SPARK_N 个采样（状态每 2 秒轮询一次）
+const SPARK_N = 30;
+const parseSpeed = (str) => {
+  const m = /([\d.]+)\s*(B|KB|MB|GB)/i.exec(str || '');
+  if (!m) return 0;
+  const k = { B: 1, KB: 1024, MB: 1048576, GB: 1073741824 }[m[2].toUpperCase()] || 1;
+  return parseFloat(m[1]) * k;
+};
+function Spark({ data }) {
+  const W = 100, H = 30;
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const step = W / (SPARK_N - 1);
+  const pts = data.map((v, i) => [W - (data.length - 1 - i) * step, H - 1.5 - (v / max) * (H - 8)]);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ');
+  const area = `${line} L${W} ${H} L${pts[0][0].toFixed(2)} ${H} Z`;
+  return (
+    <svg className="sb-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+      <path className="area" d={area} />
+      <path className="ln" d={line} />
+    </svg>
+  );
+}
 const protoLabel = (n) => (n.protocol === 'HTTP' && n.security === 'tls') ? 'HTTPS' : n.protocol;
 
 
@@ -61,6 +84,9 @@ function SimpleCloudIcon() {
 
 const PREF_KEYS = ['socksPort', 'httpPort', 'allowLan', 'muxEnabled', 'coreType', 'dnsServers', 'autoStart', 'minimizeToTray', 'subUpdateHours'];
 const prefSig = (s) => JSON.stringify(PREF_KEYS.map(k => (s || {})[k] ?? null));
+
+// 简洁模式节点菜单上次触发后台测速的时间（模块级，不受组件早返回影响）
+let lastMenuPingAt = 0;
 
 export default function App() {
   // 运行平台（Go 端 GetPlatform）：macOS 上替换 Windows 专属文案（托盘、管理员、开机自启）
@@ -138,6 +164,15 @@ export default function App() {
   
   // 简易模式自定义节点下拉是否展开
   const [nodeMenuOpen, setNodeMenuOpen] = useState(false);
+  const [simpleSortDelay, setSimpleSortDelay] = useState(false); // 简洁模式节点列表：按延迟排序
+  const [speedHist, setSpeedHist] = useState({ up: [], down: [] }); // 简洁模式连接卡速度曲线
+  useEffect(() => {
+    if (!status.running) { setSpeedHist({ up: [], down: [] }); return; }
+    setSpeedHist(h => ({
+      up: [...h.up, parseSpeed(status.upSpeed)].slice(-SPARK_N),
+      down: [...h.down, parseSpeed(status.downSpeed)].slice(-SPARK_N),
+    }));
+  }, [status]);
   const [nodeMenuStyle, setNodeMenuStyle] = useState({});
   // 首次从后端取到数据前显示启动页，避免按默认 uiMode 闪出空的简易模式界面
   const [booted, setBooted] = useState(false);
@@ -1210,6 +1245,11 @@ export default function App() {
   // 简易模式节点下拉：按窗口剩余空间限高，下方放不下时向上展开，保证能滚到最后一个节点
   const toggleNodeMenu = () => {
     if (nodeMenuOpen) { setNodeMenuOpen(false); return; }
+    // 打开节点菜单时在后台测速全部节点（结果经 kncloud:node-delay 逐个刷新到菜单里），60 秒内不重复触发
+    if (Date.now() - lastMenuPingAt > 60000) {
+      lastMenuPingAt = Date.now();
+      StartAutoPing().catch(() => {});
+    }
     // 菜单是相对外层容器（含「当前节点」标签）定位的，不是相对按钮本身；
     // 必须用容器的边界来算可用空间，否则向上展开时会多出标签高度而顶到标题栏下面
     const el = nodeTriggerRef.current;
@@ -1273,141 +1313,114 @@ export default function App() {
             </div>
           </div>
         )}
-        <div className={`simple-body st-${simpleState}`}>
-          <div className="simple-hero">
-            <div className="simple-orb">
-              <button
-                className={[
-                  'simple-power-btn',
-                  simpleState === 'ok' ? 'connected' : '',
-                  simpleState === 'checking' ? 'connecting' : '',
-                  simpleState === 'fail' ? 'failed' : '',
-                ].filter(Boolean).join(' ')}
-                onClick={handleSimpleConnect}
-                title={simpleOn ? '点击切换到全局直连' : '点击开启分流代理（绕过大陆）'}
-              >
-                <SimpleCloudIcon />
-              </button>
-            </div>
-
-            <div className={`simple-status-text ${simpleState === 'checking' ? 'checking' : ''}`}>
-              {simpleState === 'off'
-                ? '未连接'
-                : simpleState === 'checking'
-                  ? '正在连接…'
-                  : simpleState === 'fail'
-                    ? '连接失败'
-                    : simpleState === 'none'
-                      ? '未选择节点'
-                      : '连接成功'}
-            </div>
-            <div className="simple-status-sub">
-              {simpleState === 'off'
-                ? '点击云朵开始连接'
-                : simpleState === 'fail'
-                  ? '请更换节点后重试'
-                  : (status.tunnelMode ? 'TUN 模式 · 全局接管' : '智能分流 · 绕过大陆')}
-            </div>
-
-            <div className="simple-speed">
-              <div className="simple-speed-chip up">
-                <ArrowUpRight size={13} />
-                <span className="v">{status.upSpeed}</span>
-              </div>
-              <div className="simple-speed-chip down">
-                <ArrowDownLeft size={13} />
-                <span className="v">{status.downSpeed}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="simple-node-area" style={{ position: 'relative' }}>
-            <label>当前节点</label>
-            <button type="button" ref={nodeTriggerRef} className="simple-node-trigger" onClick={toggleNodeMenu}>
-              {activeNode ? (
-                <>
-                  <span className={`proto-badge proto-${activeNode.protocol.toLowerCase()}`}>{protoLabel(activeNode)}</span>
-                  <span className="simple-node-name">{activeNode.name}</span>
-                  <span className="simple-node-delay" style={{ color: delayColor(activeNode.delay) }}>
-                    {delayText(activeNode.delay)}
-                  </span>
-                </>
-              ) : (
-                <span className="simple-node-name">暂无节点，请在普通模式中添加</span>
-              )}
-              <ChevronDown
-                size={14}
-                style={{ flexShrink: 0, opacity: 0.6, transition: 'transform .15s', transform: nodeMenuOpen ? 'rotate(180deg)' : 'none' }}
-              />
-            </button>
-
-            {nodeMenuOpen && (
+        <div className={`simple-body sb-cards st-${simpleState}`}>
+          {account && account.loggedIn && (() => {
+            const used = (account.usedUp || 0) + (account.usedDown || 0);
+            const total = account.transferEnable || 0;
+            const limited = total > 0;
+            const pct = limited ? Math.min(100, (used * 100) / total) : 0;
+            return (
               <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setNodeMenuOpen(false)} />
-                <div className="simple-node-menu" style={nodeMenuStyle}>
-                  {nodes.length === 0 && <div className="simple-node-empty">暂无节点，请在普通模式中添加</div>}
-                  {nodes.map(n => (
-                    <div
-                      key={n.id}
-                      className={`simple-node-item ${activeNode && n.id === activeNode.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setNodeMenuOpen(false);
-                        if (!activeNode || n.id !== activeNode.id) handleSimpleSelectNode(n.id);
-                      }}
-                    >
-                      <span className={`proto-badge proto-${n.protocol.toLowerCase()}`}>{protoLabel(n)}</span>
-                      <span className="simple-node-name">{n.name}</span>
-                      <span className="simple-node-delay" style={{ color: delayColor(n.delay) }}>
-                        {delayText(n.delay)}
-                      </span>
+                {/* 账户卡 */}
+                <div className="sb-card sb-account">
+                  <div className="sb-account-head">
+                  <div className="simple-avatar">{(account.email || 'K').slice(0, 1).toUpperCase()}</div>
+                  <div className="simple-account-id">
+                    <div className="simple-account-email">{account.email}</div>
+                    <div className="simple-account-expire">{account.expire}</div>
+                  </div>
+                  <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
+                  </div>
+                  <div className="sb-usage">
+                    <div className="sb-usage-row">
+                      <span>已用 <b>{fmtGB(used)}</b></span>
+                      <span>{limited ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% · 共 ${fmtGB(total)}` : '不限流量'}</span>
                     </div>
-                  ))}
+                    {limited && <div className="simple-account-bar"><div style={{ width: `${pct}%` }} /></div>}
+                  </div>
+                  <div className="simple-account-actions sb-actions">
+                    <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
+                      <RefreshCw size={13} className={syncing ? 'spin' : ''} />
+                      <span>{syncing ? '更新中…' : '更新订阅'}</span>
+                    </button>
+                    <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
+                      <LogOut size={13} />
+                      <span>退出登录</span>
+                    </button>
+                  </div>
                 </div>
               </>
-            )}
-          </div>
+            );
+          })()}
 
-          {account && account.loggedIn && (
-            <div className="simple-account">
-              <div className="simple-account-head">
-                <div className="simple-avatar">{(account.email || 'K').slice(0, 1).toUpperCase()}</div>
-                <div className="simple-account-id">
-                  <div className="simple-account-email">{account.email}</div>
-                  <div className="simple-account-expire">{account.expire}</div>
-                </div>
-                <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
+          {/* 连接卡（紧凑）：盾牌图标 + 状态 + 一行上下行速度/节点/延迟，右侧开关 */}
+          <div className="sb-card sb-status sb-compact" title={simpleOn ? (status.tunnelMode ? '模式：TUN 全局' : '模式：智能分流') : undefined}>
+            <div className="sb-shield"><Cloud size={21} strokeWidth={2.1} /></div>
+            <div className="sb-status-info">
+              <div className={`simple-status-text sb-status-title ${simpleState === 'checking' ? 'checking' : ''}`}>
+                {simpleState === 'off'
+                  ? '未连接'
+                  : simpleState === 'checking'
+                    ? '正在连接…'
+                    : simpleState === 'fail'
+                      ? '连接失败'
+                      : simpleState === 'none'
+                        ? '未选择节点'
+                        : '已连接'}
               </div>
-              {(() => {
-                const used = account.usedUp + account.usedDown;
-                const pct = account.transferEnable > 0 ? Math.min(100, (used * 100) / account.transferEnable) : 0;
-                return (
-                  <div className="simple-usage">
-                    <div className="simple-usage-row">
-                      <span>已用 <b>{fmtGB(used)}</b></span>
-                      <span>{account.transferEnable > 0 ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% · 共 ${fmtGB(account.transferEnable)}` : '不限流量'}</span>
-                    </div>
-                    <div className="simple-account-bar">
-                      <div style={{ width: pct + '%' }} />
-                    </div>
-                  </div>
-                );
-              })()}
-              <div className="simple-account-actions">
-                <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
-                  <RefreshCw size={13} className={syncing ? 'spin' : ''} />
-                  <span>{syncing ? '更新中…' : '更新订阅'}</span>
-                </button>
-                <button className="win11-btn" onClick={handlePingAll} disabled={isPingingAll} title={isPingingAll ? '测速中…' : '测试节点'} aria-label="测试节点">
-                  <Gauge size={13} />
-                  <span>{isPingingAll ? '测速中…' : '测试节点'}</span>
-                </button>
-                <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
-                  <LogOut size={13} />
-                  <span>退出登录</span>
-                </button>
+              <div className="sb-compact-sub" title="上下行仅统计经代理节点的流量">
+                {simpleState === 'ok' ? (
+                  <>
+                    <span className="sb-sp">↑ {status.upSpeed || '0 B/s'}</span>
+                    <span className="sb-sp">↓ {status.downSpeed || '0 B/s'}</span>
+                    <span className="sb-sep">·</span>
+                    <span className="sb-compact-node">{activeNode ? activeNode.name : ''}{activeNode && activeNode.delay > 0 ? ` ${activeNode.delay}ms` : ''}</span>
+                  </>
+                ) : (
+                  <span className="sb-compact-node">
+                    {simpleState === 'off'
+                      ? `打开右侧开关开始连接${activeNode ? ' · ' + activeNode.name : ''}`
+                      : simpleState === 'fail'
+                        ? '请更换节点后重试'
+                        : simpleState === 'none'
+                          ? '请在下方选择节点'
+                          : (activeNode ? activeNode.name : '')}
+                  </span>
+                )}
               </div>
             </div>
-          )}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={simpleOn}
+              aria-label="连接开关"
+              className={['sb-switch', (simpleOn || simpleState === 'checking') ? 'on' : '', simpleState === 'checking' ? 'busy' : ''].filter(Boolean).join(' ')}
+              onClick={handleSimpleConnect}
+              title={simpleOn ? '点击断开连接' : '点击开启分流代理（绕过大陆）'}
+            >
+              <span className="sb-switch-thumb" />
+            </button>
+          </div>
+
+          {/* 节点卡：固定单行，点击打开节点下拉（菜单以本容器为定位基准计算上下空间） */}
+          <div className="sb-nodes">
+            <div className="sb-card sb-node-list">
+              {nodes.length === 0 && <div className="sb-node-list-empty">暂无节点，请在普通模式中添加</div>}
+              {nodes.map(n => (
+                <button
+                  type="button"
+                  key={n.id}
+                  className={`sb-node-row ${n.active ? 'active' : ''}`}
+                  onClick={() => { if (!n.active) handleSimpleSelectNode(n.id); }}
+                >
+                  <span className="sb-node-check">{n.active && <Check size={14} />}</span>
+                  <span className={`proto-badge proto-${n.protocol.toLowerCase()}`}>{protoLabel(n)}</span>
+                  <span className="sb-node-row-name">{n.name}</span>
+                  <span className="sb-node-row-delay" style={{ color: delayColor(n.delay) }}>{delayText(n.delay)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
