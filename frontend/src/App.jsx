@@ -3,7 +3,7 @@ import kncFgWhite from './assets/knc-fg-white.png';
 import kncLoginDark from './assets/knc-login-dark.png';
 import kncLoginLight from './assets/knc-login-light.png';
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Activity, Server, GitFork, BookOpen, Terminal, Settings, Menu, Sun, Moon, Monitor, Minus, Square, X, Play, Pause, RefreshCw, Plus, Trash2, Zap, Globe, ArrowUpRight, ArrowDownLeft, CheckCircle2, Sliders, Search, Check, Copy, Pencil, ChevronDown, LayoutGrid, SlidersHorizontal, FolderInput, LoaderCircle, Gauge, LogOut, CircleHelp, ChevronLeft, ChevronRight, Plug, Wifi, Cpu, Layers, Power, Info, ArrowUpDown } from 'lucide-react';
+import { Shield, Activity, Server, GitFork, BookOpen, Terminal, Settings, Menu, Sun, Moon, Monitor, Minus, Square, X, Play, Pause, RefreshCw, Plus, Trash2, Zap, Globe, ArrowUpRight, ArrowDownLeft, CheckCircle2, Sliders, Search, Check, Copy, Pencil, ChevronDown, LayoutGrid, SlidersHorizontal, FolderInput, LoaderCircle, Gauge, LogOut, CircleHelp, ChevronLeft, ChevronRight, Plug, Wifi, Cpu, Layers, Power, Info, ArrowUpDown, Cloud } from 'lucide-react';
 
 import {
   GetNodes,
@@ -1355,7 +1355,7 @@ export default function App() {
 
           {/* 连接卡（紧凑）：盾牌图标 + 状态 + 一行上下行速度/节点/延迟，右侧开关 */}
           <div className="sb-card sb-status sb-compact" title={simpleOn ? (status.tunnelMode ? '模式：TUN 全局' : '模式：智能分流') : undefined}>
-            <div className="sb-shield"><Shield size={20} strokeWidth={2.2} /></div>
+            <div className="sb-shield"><Cloud size={21} strokeWidth={2.1} /></div>
             <div className="sb-status-info">
               <div className={`simple-status-text sb-status-title ${simpleState === 'checking' ? 'checking' : ''}`}>
                 {simpleState === 'off'
