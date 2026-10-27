@@ -307,8 +307,8 @@ func (a *App) startupCoreFatal(err error) {
 	if ctx := a.appCtx(); ctx != nil {
 		runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 			Type:    runtime.ErrorDialog,
-			Title:   "KNcloud 无法启动",
-			Message: fmt.Sprintf("内核无法启动，程序将退出。\n\n原因：%v", err),
+			Title:   L("KNcloud 无法启动", "KNcloud cannot start"),
+			Message: fmt.Sprintf(L("内核无法启动，程序将退出。\n\n原因：%v", "The core cannot start; the app will quit.\n\nReason: %v"), err),
 		})
 	}
 	a.quitApp()

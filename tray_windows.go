@@ -71,7 +71,7 @@ func (t *trayController) requestRebuild() {
 
 func (t *trayController) onReady() {
 	systray.SetIcon(trayIconData)
-	systray.SetTooltip("KNcloud-WIN · 智能分流代理")
+	systray.SetTooltip(L("KNcloud-WIN · 智能分流代理", "KNcloud-WIN · Smart routing proxy"))
 
 	// 左键单击 / 双击：唤出主界面
 	systray.SetOnClick(func(systray.IMenu) { t.app.showMainWindow() })
@@ -157,17 +157,17 @@ func (t *trayController) buildMenu() {
 	}
 
 	// 悬停提示：「代理模式 - 代理节点」，如「绕过大陆 - 日本[V6]」；未连接时显示「未连接」
-	modeLabel := map[string]string{"bypass-cn": "绕过大陆", "global": "全局代理", "direct": "全局直连"}[routingMode]
+	modeLabel := map[string]string{"bypass-cn": L("绕过大陆", "Bypass China"), "global": L("全局代理", "Global proxy"), "direct": L("全局直连", "Direct")}[routingMode]
 	if modeLabel == "" {
-		modeLabel = "绕过大陆"
+		modeLabel = L("绕过大陆", "Bypass China")
 	}
 	if tunRunning {
-		modeLabel = "TUN 模式"
+		modeLabel = L("TUN 模式", "TUN mode")
 	}
 
 	systray.ResetMenu()
 
-	statusLabel := "未连接"
+	statusLabel := L("未连接", "Disconnected")
 	if tunRunning || coreRunning {
 		statusLabel = modeLabel
 		if activeName != "" {
@@ -177,11 +177,11 @@ func (t *trayController) buildMenu() {
 	systray.SetTooltip(statusLabel)
 
 	// ---------- 更新订阅（与仪表盘「更新订阅」一致：刷新套餐/流量 + 同步节点） ----------
-	subLabel := "更新订阅"
+	subLabel := L("更新订阅", "Update subscription")
 	if a.traySubUpdating.Load() {
-		subLabel = "正在更新订阅…"
+		subLabel = L("正在更新订阅…", "Updating subscription…")
 	}
-	miSub := systray.AddMenuItem(subLabel, "刷新套餐与流量，并同步最新节点列表")
+	miSub := systray.AddMenuItem(subLabel, L("刷新套餐与流量，并同步最新节点列表", "Refresh plan usage and sync the latest nodes"))
 	if a.traySubUpdating.Load() {
 		miSub.Disable()
 	}
@@ -192,24 +192,24 @@ func (t *trayController) buildMenu() {
 	// ---------- 代理模式（与仪表盘四个按钮一致，四选一互斥） ----------
 	// 绕过大陆 / 全局代理 / 全局直连 = 系统代理模式下的分流策略；TUN 模式 = 虚拟网卡全局接管。
 	// TUN 运行时只勾 TUN；点任一策略即关 TUN 并按该策略回到系统代理模式。
-	miMode := systray.AddMenuItem("代理模式", "绕过大陆 / 全局代理 / 全局直连 / TUN 模式（四选一）")
+	miMode := systray.AddMenuItem(L("代理模式", "Proxy mode"), L("绕过大陆 / 全局代理 / 全局直连 / TUN 模式（四选一）", "Bypass China / Global proxy / Direct / TUN mode (pick one)"))
 	for _, m := range []struct{ id, label, tip string }{
-		{"bypass-cn", "绕过大陆", "系统代理：国内直连，其余走代理"},
-		{"global", "全局代理", "系统代理：全部走代理（局域网除外）"},
-		{"direct", "全局直连", "系统代理：全部直连"},
+		{"bypass-cn", L("绕过大陆", "Bypass China"), L("系统代理：国内直连，其余走代理", "System proxy: China direct, the rest via proxy")},
+		{"global", L("全局代理", "Global proxy"), L("系统代理：全部走代理（局域网除外）", "System proxy: everything via proxy (except LAN)")},
+		{"direct", L("全局直连", "Direct"), L("系统代理：全部直连", "System proxy: everything direct")},
 	} {
 		child := miMode.AddSubMenuItemCheckbox(m.label, m.tip, !tunRunning && routingMode == m.id)
 		modeID := m.id
 		child.Click(func() { go a.traySetRoutingMode(modeID) })
 	}
-	childTun := miMode.AddSubMenuItemCheckbox("TUN 模式", "虚拟网卡全局接管整机流量（需管理员权限）", tunRunning)
+	childTun := miMode.AddSubMenuItemCheckbox(L("TUN 模式", "TUN mode"), L("虚拟网卡全局接管整机流量（需管理员权限）", "Virtual adapter takes over all traffic (requires admin)"), tunRunning)
 	childTun.Click(func() { go a.traySetTun() })
 
 	// ---------- 切换节点 ----------
-	miNodes := systray.AddMenuItem("切换节点", "选择要使用的代理节点")
+	miNodes := systray.AddMenuItem(L("切换节点", "Switch node"), L("选择要使用的代理节点", "Choose the proxy node to use"))
 	switch {
 	case len(nodes) == 0:
-		empty := miNodes.AddSubMenuItem("暂无可用节点", "请先添加节点或同步订阅")
+		empty := miNodes.AddSubMenuItem(L("暂无可用节点", "No nodes available"), L("请先添加节点或同步订阅", "Add nodes or sync the subscription first"))
 		empty.Disable()
 	default:
 		limit := len(nodes)
@@ -223,21 +223,21 @@ func (t *trayController) buildMenu() {
 			case n.Delay > 0:
 				label = fmt.Sprintf("%s  (%dms)", label, n.Delay)
 			case n.Delay == -2:
-				label += "  (超时)"
+				label += L("  (超时)", "  (timeout)")
 			}
 			child := miNodes.AddSubMenuItemCheckbox(label, n.Address, n.Active || n.ID == activeNodeID)
 			nodeID := n.ID
 			child.Click(func() { go a.traySelectNode(nodeID) })
 		}
 		if len(nodes) > limit {
-			more := miNodes.AddSubMenuItem(fmt.Sprintf("更多节点…（共 %d 个）", len(nodes)), "打开主界面查看完整节点列表")
+			more := miNodes.AddSubMenuItem(fmt.Sprintf(L("更多节点…（共 %d 个）", "More nodes… (%d total)"), len(nodes)), L("打开主界面查看完整节点列表", "Open the main window for the full node list"))
 			more.Click(func() { a.showMainWindow() })
 		}
 	}
 
 	systray.AddSeparator()
 
-	miQuit := systray.AddMenuItem("退出", "退出程序并还原系统代理")
+	miQuit := systray.AddMenuItem(L("退出", "Quit"), L("退出程序并还原系统代理", "Quit and restore the system proxy"))
 	miQuit.Click(func() { go a.quitApp() })
 }
 
