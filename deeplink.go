@@ -132,12 +132,12 @@ func (a *App) handleDeepLink(raw string) {
 
 	who := link.Email
 	if who == "" {
-		who = "网页中已登录的账户"
+		who = L("网页中已登录的账户", "the account signed in on the website")
 	}
 	answer, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 		Type:          runtime.QuestionDialog,
-		Title:         "导入 KNcloud 订阅",
-		Message:       fmt.Sprintf("是否使用 %s 登录 KNcloud-WIN 并导入订阅？\n\n官网：%s", who, link.Domain),
+		Title:         L("导入 KNcloud 订阅", "Import KNcloud subscription"),
+		Message:       fmt.Sprintf(L("是否使用 %s 登录 KNcloud-WIN 并导入订阅？\n\n官网：%s", "Sign in to KNcloud-WIN as %s and import the subscription?\n\nWebsite: %s"), who, link.Domain),
 		Buttons:       []string{"Yes", "No"},
 		DefaultButton: "Yes",
 		CancelButton:  "No",

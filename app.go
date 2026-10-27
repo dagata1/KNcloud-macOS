@@ -101,6 +101,8 @@ type AppSettings struct {
 	Theme string `json:"theme"` // system, light, dark
 	// ThemeChosen 用户是否亲手切换过主题；macOS 上没切换过的老配置按系统外观（system）。
 	ThemeChosen bool   `json:"themeChosen"`
+	// Language 界面语言：system（跟随系统，默认）/ zh-CN / en。前端读写；托盘与原生对话框按生效语言显示（见 i18n.go）。
+	Language string `json:"language"`
 	UiMode      string `json:"uiMode"` // classic(普通模式), simple(简易模式)
 	SocksPort   int    `json:"socksPort"`
 	HttpPort    int    `json:"httpPort"`
@@ -1497,6 +1499,12 @@ func (a *App) SaveSettings(settings AppSettings) error {
 	}
 	if settings.HttpPort <= 0 || settings.HttpPort > 65535 {
 		settings.HttpPort = old.HttpPort
+	}
+	if !validLanguage(settings.Language) {
+		settings.Language = old.Language
+		if !validLanguage(settings.Language) {
+			settings.Language = "system"
+		}
 	}
 	if settings.Theme == "" {
 		settings.Theme = old.Theme

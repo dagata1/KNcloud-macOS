@@ -104,14 +104,14 @@ func buildAppMenu(a *App) *menu.Menu {
 	root.Append(menu.EditMenu())
 
 	// ---------- 代理菜单（对应 Windows 托盘右键菜单） ----------
-	pm := root.AddSubmenu("代理")
-	status := "未连接"
-	modeLabel := map[string]string{"bypass-cn": "绕过大陆", "global": "全局代理", "direct": "全局直连"}[routingMode]
+	pm := root.AddSubmenu(L("代理", "Proxy"))
+	status := L("未连接", "Disconnected")
+	modeLabel := map[string]string{"bypass-cn": L("绕过大陆", "Bypass China"), "global": L("全局代理", "Global proxy"), "direct": L("全局直连", "Direct")}[routingMode]
 	if modeLabel == "" {
-		modeLabel = "绕过大陆"
+		modeLabel = L("绕过大陆", "Bypass China")
 	}
 	if tunRunning {
-		modeLabel = "TUN 模式"
+		modeLabel = L("TUN 模式", "TUN mode")
 	}
 	if tunRunning || coreRunning {
 		status = modeLabel
@@ -122,13 +122,13 @@ func buildAppMenu(a *App) *menu.Menu {
 			}
 		}
 	}
-	pm.AddText("状态："+status, nil, nil).Disable()
-	pm.AddText("显示主界面", keys.CmdOrCtrl("1"), func(*menu.CallbackData) { a.showApp() })
+	pm.AddText(L("状态：", "Status: ")+status, nil, nil).Disable()
+	pm.AddText(L("显示主界面", "Show main window"), keys.CmdOrCtrl("1"), func(*menu.CallbackData) { a.showApp() })
 	pm.AddSeparator()
 
-	subLabel := "更新订阅"
+	subLabel := L("更新订阅", "Update subscription")
 	if a.traySubUpdating.Load() {
-		subLabel = "正在更新订阅…"
+		subLabel = L("正在更新订阅…", "Updating subscription…")
 	}
 	sub := pm.AddText(subLabel, keys.CmdOrCtrl("u"), func(*menu.CallbackData) { go a.trayUpdateSubscription() })
 	if a.traySubUpdating.Load() {
@@ -137,19 +137,19 @@ func buildAppMenu(a *App) *menu.Menu {
 	pm.AddSeparator()
 
 	for _, m := range []struct{ id, label string }{
-		{"bypass-cn", "绕过大陆"},
-		{"global", "全局代理"},
-		{"direct", "全局直连"},
+		{"bypass-cn", L("绕过大陆", "Bypass China")},
+		{"global", L("全局代理", "Global proxy")},
+		{"direct", L("全局直连", "Direct")},
 	} {
 		modeID := m.id
 		pm.AddCheckbox(m.label, !tunRunning && routingMode == m.id, nil, func(*menu.CallbackData) { go a.traySetRoutingMode(modeID) })
 	}
-	pm.AddCheckbox("TUN 模式（需管理员授权）", tunRunning, nil, func(*menu.CallbackData) { go a.traySetTun() })
+	pm.AddCheckbox(L("TUN 模式（需管理员授权）", "TUN mode (requires admin)"), tunRunning, nil, func(*menu.CallbackData) { go a.traySetTun() })
 	pm.AddSeparator()
 
-	nm := pm.AddSubmenu("切换节点")
+	nm := pm.AddSubmenu(L("切换节点", "Switch node"))
 	if len(nodes) == 0 {
-		nm.AddText("暂无可用节点", nil, nil).Disable()
+		nm.AddText(L("暂无可用节点", "No nodes available"), nil, nil).Disable()
 	} else {
 		limit := len(nodes)
 		if limit > trayMaxNodeItems {
@@ -162,13 +162,13 @@ func buildAppMenu(a *App) *menu.Menu {
 			case n.Delay > 0:
 				label = fmt.Sprintf("%s  (%dms)", label, n.Delay)
 			case n.Delay == -2:
-				label += "  (超时)"
+				label += L("  (超时)", "  (timeout)")
 			}
 			nodeID := n.ID
 			nm.AddCheckbox(label, n.Active || n.ID == activeNodeID, nil, func(*menu.CallbackData) { go a.traySelectNode(nodeID) })
 		}
 		if len(nodes) > limit {
-			nm.AddText(fmt.Sprintf("更多节点…（共 %d 个）", len(nodes)), nil, func(*menu.CallbackData) { a.showApp() })
+			nm.AddText(fmt.Sprintf(L("更多节点…（共 %d 个）", "More nodes… (%d total)"), len(nodes)), nil, func(*menu.CallbackData) { a.showApp() })
 		}
 	}
 

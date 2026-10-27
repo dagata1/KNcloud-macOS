@@ -1834,6 +1834,7 @@ select.win11-input option {
   gap: 2px;
 }
 .theme-menu-item {
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2471,7 +2472,7 @@ select.win11-input option {
 .sb-menu-mask { position: fixed; inset: 0; z-index: 40; }
 .sb-acct-menu { position: absolute; top: 32px; right: 0; z-index: 41; min-width: 132px; padding: 5px; border-radius: 10px; border: 1px solid var(--border-default); background: #2c2c2c; box-shadow: 0 8px 24px rgba(0,0,0,0.28); display: flex; flex-direction: column; }
 .app-window:not(.dark-theme) .sb-acct-menu { background: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-.sb-acct-menu button { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: none; border-radius: 7px; background: transparent; color: var(--text-primary); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; }
+.sb-acct-menu button { display: flex; align-items: center; gap: 8px; white-space: nowrap; height: 32px; padding: 0 10px; border: none; border-radius: 7px; background: transparent; color: var(--text-primary); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; }
 .sb-acct-menu button:hover:not(:disabled) { background: var(--bg-card-hover); }
 .sb-acct-menu button:disabled { opacity: 0.6; cursor: default; }
 .sb-acct-menu button.danger { color: #ff6b6b; }

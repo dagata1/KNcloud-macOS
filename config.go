@@ -69,6 +69,11 @@ func (a *App) loadPersisted() bool {
 	}
 	a.settings = cfg.Settings
 	// 用户没亲手选过主题：按平台默认（macOS 跟随系统外观，Windows 保持原样）
+	// 旧配置没有 language：按跟随系统处理
+	if !validLanguage(a.settings.Language) {
+		a.settings.Language = "system"
+	}
+	applyLanguagePref(a.settings.Language)
 	if defaultTheme == "system" && !a.settings.ThemeChosen {
 		a.settings.Theme = "system"
 	}
