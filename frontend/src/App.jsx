@@ -3,7 +3,7 @@ import kncFgWhite from './assets/knc-fg-white.png';
 import kncLoginDark from './assets/knc-login-dark.png';
 import kncLoginLight from './assets/knc-login-light.png';
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Activity, Server, GitFork, BookOpen, Terminal, Settings, Menu, Sun, Moon, Monitor, Minus, Square, X, Play, Pause, RefreshCw, Plus, Trash2, Zap, Globe, ArrowUpRight, ArrowDownLeft, CheckCircle2, Sliders, Search, Check, Copy, Pencil, ChevronDown, LayoutGrid, SlidersHorizontal, FolderInput, LoaderCircle, Gauge, LogOut, CircleHelp, ChevronLeft, ChevronRight, Plug, Wifi, Cpu, Layers, Power, Info, ArrowUpDown, Cloud } from 'lucide-react';
+import { Shield, Activity, Server, GitFork, BookOpen, Terminal, Settings, Menu, Sun, Moon, Monitor, Minus, Square, X, Play, Pause, RefreshCw, Plus, Trash2, Zap, Globe, ArrowUpRight, ArrowDownLeft, CheckCircle2, Sliders, Search, Check, Copy, Pencil, ChevronDown, LayoutGrid, SlidersHorizontal, FolderInput, LoaderCircle, Gauge, LogOut, CircleHelp, ChevronLeft, ChevronRight, Plug, Wifi, Cpu, Layers, Power, Info, ArrowUpDown, Cloud, MoreHorizontal } from 'lucide-react';
 
 import {
   GetNodes,
@@ -387,6 +387,7 @@ export default function App() {
 
   // Actions
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [acctMenuOpen, setAcctMenuOpen] = useState(false);
   const themeMenuRef = useRef(null);
   useEffect(() => {
     if (!themeMenuOpen) return undefined;
@@ -1330,6 +1331,24 @@ export default function App() {
                     <div className="simple-account-expire">{account.expire}</div>
                   </div>
                   <span className="simple-plan-badge">{account.planName || 'KNcloud 套餐'}</span>
+                  <div className="sb-acct-more">
+                    <button type="button" className={`sb-icon-btn ${acctMenuOpen ? 'on' : ''}`} onClick={() => setAcctMenuOpen(v => !v)} title="更多" aria-label="更多">
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {acctMenuOpen && (
+                      <>
+                        <div className="sb-menu-mask" onClick={() => setAcctMenuOpen(false)} />
+                        <div className="sb-acct-menu" role="menu">
+                          <button type="button" role="menuitem" disabled={syncing} onClick={() => { setAcctMenuOpen(false); handleUpdateSubscription(); }}>
+                            <RefreshCw size={13} className={syncing ? 'spin' : ''} /><span>{syncing ? '更新中…' : '更新订阅'}</span>
+                          </button>
+                          <button type="button" role="menuitem" className="danger" onClick={() => { setAcctMenuOpen(false); handleLogout(); }}>
+                            <LogOut size={13} /><span>退出登录</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   </div>
                   <div className="sb-usage">
                     <div className="sb-usage-row">
@@ -1337,16 +1356,6 @@ export default function App() {
                       <span>{limited ? `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% · 共 ${fmtGB(total)}` : '不限流量'}</span>
                     </div>
                     {limited && <div className="simple-account-bar"><div style={{ width: `${pct}%` }} /></div>}
-                  </div>
-                  <div className="simple-account-actions sb-actions">
-                    <button className="win11-btn" onClick={handleUpdateSubscription} disabled={syncing} title={syncing ? '更新中…' : '更新订阅'} aria-label="更新订阅">
-                      <RefreshCw size={13} className={syncing ? 'spin' : ''} />
-                      <span>{syncing ? '更新中…' : '更新订阅'}</span>
-                    </button>
-                    <button className="win11-btn danger" onClick={handleLogout} title="退出登录" aria-label="退出登录">
-                      <LogOut size={13} />
-                      <span>退出登录</span>
-                    </button>
                   </div>
                 </div>
               </>
@@ -1414,7 +1423,6 @@ export default function App() {
                   onClick={() => { if (!n.active) handleSimpleSelectNode(n.id); }}
                 >
                   <span className="sb-node-check">{n.active && <Check size={14} />}</span>
-                  <span className={`proto-badge proto-${n.protocol.toLowerCase()}`}>{protoLabel(n)}</span>
                   <span className="sb-node-row-name">{n.name}</span>
                   <span className="sb-node-row-delay" style={{ color: delayColor(n.delay) }}>{delayText(n.delay)}</span>
                 </button>

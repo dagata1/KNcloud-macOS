@@ -2461,3 +2461,23 @@ select.win11-input option {
 .sb-switch.on .sb-switch-thumb { transform: translateX(22px); }
 .sb-switch.busy .sb-switch-thumb::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; border: 2px solid var(--st, var(--accent)); border-top-color: transparent; animation: sbSpin 0.8s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .sb-switch-thumb { transition: none; } .sb-switch.busy .sb-switch-thumb::after { animation: none; } }
+
+/* ---- 简洁模式减负（v1.4.23）：更大留白、账户操作收进「⋯」菜单、节点行去协议标签 ---- */
+.simple-body.sb-cards { gap: 16px; padding: 18px max(20px, calc((100% - 460px) / 2)) 20px; }
+.sb-card.sb-account { position: relative; z-index: 2; gap: 14px; padding: 16px 14px 18px 16px; }
+.sb-acct-more { position: relative; flex-shrink: 0; margin-left: -4px; }
+.sb-icon-btn { width: 28px; height: 28px; display: grid; place-items: center; border: none; border-radius: 7px; background: transparent; color: var(--text-tertiary); cursor: pointer; }
+.sb-icon-btn:hover, .sb-icon-btn.on { background: var(--bg-card-hover); color: var(--text-primary); }
+.sb-menu-mask { position: fixed; inset: 0; z-index: 40; }
+.sb-acct-menu { position: absolute; top: 32px; right: 0; z-index: 41; min-width: 132px; padding: 5px; border-radius: 10px; border: 1px solid var(--border-default); background: #2c2c2c; box-shadow: 0 8px 24px rgba(0,0,0,0.28); display: flex; flex-direction: column; }
+.app-window:not(.dark-theme) .sb-acct-menu { background: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.sb-acct-menu button { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: none; border-radius: 7px; background: transparent; color: var(--text-primary); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; }
+.sb-acct-menu button:hover:not(:disabled) { background: var(--bg-card-hover); }
+.sb-acct-menu button:disabled { opacity: 0.6; cursor: default; }
+.sb-acct-menu button.danger { color: #ff6b6b; }
+.app-window:not(.dark-theme) .sb-acct-menu button.danger { color: #c42b1c; }
+.sb-card.sb-node-list { padding: 6px; }
+.sb-node-row { height: 40px; gap: 8px; padding: 0 12px 0 8px; }
+.sb-node-row-name { font-size: 13px; }
+.sb-node-row-delay { font-size: 11px; opacity: 0.85; }
+.sb-cards > .sb-nodes { min-height: calc(4 * 40px + 12px); }
