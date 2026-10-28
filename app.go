@@ -172,6 +172,7 @@ type App struct {
 	corePortErr     bool             // 失败原因是端口被占用且连自动换端口都没找到空闲端口
 	coreFallback    bool             // 节点配置起不来，内核暂以「只有直连出站」的配置运行（自动重试恢复）
 	liveHTTPPort    atomic.Int32     // 正在运行的内核的 HTTP 入站端口；0 = 内核没在运行（无锁读，订阅拉取等待用）
+	boot            bootState        // 登录引导代理（官网连不上时临时启用，见 bootstrap.go）
 	coreRetrying    bool             // 正在按退避节奏自动重试
 	sysProxyPending bool             // 内核起不来时暂时撤下了系统代理（或启动时还没来得及开），内核恢复后应重新开启
 	coreRetryGen    atomic.Uint64    // 自动重试代号：换节点 / 开关内核 / 手动重启 / 退出时递增以取消正在等待的重试
@@ -1455,6 +1456,18 @@ var subProxyWait = 10 * time.Second
 // 直连由内核按当前模式决定），不直连兜底。内核正在重启时先等端口起来（最多 subProxyWait），
 // 还不通就报错。
 func (a *App) fetchSubscriptionContent(rawURL string) (string, error) {
+	// 登录 / 刷新账户时已经启用了登录引导（官网直连不通）：订阅先经引导代理拉，失败再走本地代理
+	if port := a.bootPort(); port > 0 {
+		content, err := subfetch.Fetch(rawURL, subfetch.Options{
+			Port:    func() int { return port },
+			Wait:    time.Second,
+			Timeout: 25 * time.Second,
+		})
+		if err == nil {
+			return content, nil
+		}
+		a.addLogInternal("warn", fmt.Sprintf("经登录引导节点拉取订阅失败，改走本地代理：%v", err))
+	}
 	content, err := subfetch.Fetch(rawURL, subfetch.Options{
 		Port:    func() int { return int(a.liveHTTPPort.Load()) },
 		Wait:    subProxyWait,
