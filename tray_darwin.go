@@ -137,9 +137,9 @@ func buildAppMenu(a *App) *menu.Menu {
 	pm.AddSeparator()
 
 	for _, m := range []struct{ id, label string }{
+		{"direct", L("全局直连", "Direct")},
 		{"bypass-cn", L("绕过大陆", "Bypass China")},
 		{"global", L("全局代理", "Global proxy")},
-		{"direct", L("全局直连", "Direct")},
 	} {
 		modeID := m.id
 		pm.AddCheckbox(m.label, !tunRunning && routingMode == m.id, nil, func(*menu.CallbackData) { go a.traySetRoutingMode(modeID) })

@@ -1205,7 +1205,7 @@ export default function App() {
   const tileBars = (d) => d > 0 ? (d < 150 ? 4 : d < 300 ? 3 : d < 600 ? 2 : 1) : 0;
 
   // 四选一的当前模式：点击后立即显示目标（乐观），否则按真实状态（TUN 优先于分流策略）
-  const MODE_ORDER = ['bypass-cn', 'global', 'direct', 'tun'];
+  const MODE_ORDER = ['direct', 'bypass-cn', 'global', 'tun'];
   const actualMode = status.tunnelMode ? 'tun' : (status.routingMode || 'bypass-cn');
   const shownMode = pendingMode || actualMode;
   const modeIndex = Math.max(0, MODE_ORDER.indexOf(shownMode));
@@ -1511,9 +1511,9 @@ export default function App() {
                       style={{ transform: `translateX(calc(${modeIndex} * (100% + 4px)))` }}
                     />
                     {[
+                      { id: 'direct', label: tr('全局直连') },
                       { id: 'bypass-cn', label: tr('绕过大陆') },
                       { id: 'global', label: tr('全局代理') },
-                      { id: 'direct', label: tr('全局直连') },
                       { id: 'tun', label: tr('TUN 模式'), title: isMac ? tr('虚拟网卡（utun）全局接管整机流量（首次开启需输入管理员密码授权）') : tr('虚拟网卡全局接管整机流量（需管理员权限）') },
                     ].map(m => (
                       <button
@@ -1597,20 +1597,14 @@ export default function App() {
     </>
   );
   // 子页面顶栏（吸顶，不随内容滚走）：返回 / 设置分段 / 当前页操作
-  const macPageNav = (withTabs, actions) => !isMac ? null : (
-    <div className={`mac-page-nav ${withTabs ? 'is-sticky' : ''} ${settingsScrolled ? 'scrolled' : ''}`}>
-      <button className="mac-back-btn" onClick={() => setActiveTab('dashboard')} title={tr('返回仪表盘')}>
-        <ChevronLeft size={16} />
-        <span>{tr('仪表盘')}</span>
-      </button>
-      {withTabs && (
-        <div className="segmented-control mac-sub-tabs">
-          {[['settings', tr('通用')], ['logs', tr('运行日志')]].map(([id, label]) => (
-            <button key={id} className={`segment-btn ${activeTab === id ? 'active' : ''}`} onClick={() => setActiveTab(id)}>{label}</button>
-          ))}
-        </div>
-      )}
-      {actions && <div className="settings-topbar-actions">{actions}</div>}
+  // 子页面顶栏（吸顶，不随内容滚走）：标题 + 当前页操作（导航交给左侧边栏）
+  const macPageNav = (withTabs, actions) => (!isMac || !actions) ? null : (
+    <div className={`mac-page-nav is-sticky ${settingsScrolled ? 'scrolled' : ''}`}>
+      <div style={{ minWidth: 0 }}>
+        <h1 className="content-title" style={{ margin: 0 }}>{activeTab === 'logs' ? tr('实时运行日志') : tr('首选项设置')}</h1>
+        <p className="content-subtitle" style={{ margin: '2px 0 0' }}>{activeTab === 'logs' ? tr('查看代理核心的连接追踪、分流判定与警告异常') : tr('配置本地监听端口、内核、DNS 与系统集成')}</p>
+      </div>
+      <div className="settings-topbar-actions">{actions}</div>
     </div>
   );
 
@@ -1642,7 +1636,7 @@ export default function App() {
       {/* Main Body */}
       <div className="app-body">
         {/* Left Windows 11 Navigation Bar */}
-        {!isMac && (<nav className={`nav-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        {(<nav className={`nav-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <div className="nav-top-actions">
             <button
               className="hamburger-btn"
@@ -2093,12 +2087,12 @@ export default function App() {
           {activeTab === 'logs' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
               {macPageNav(true, logsActions)}
-              <div className="content-header" style={{ marginBottom: 0 }}>
+              {!isMac && <div className="content-header" style={{ marginBottom: 0 }}>
                 <div>
                   <h1 className="content-title">{tr('实时运行日志')}</h1>
                   <p className="content-subtitle">{tr('查看代理核心的连接追踪、分流判定与警告异常')}</p>
                 </div>
-              </div>
+              </div>}
 
               <div className="win11-card" style={{ flex: 1, padding: '14px', background: 'rgba(15, 15, 15, 0.85)', color: '#eaeaea', fontFamily: 'Consolas, monospace', fontSize: '12px', overflowY: 'auto', borderRadius: '8px', minHeight: '380px' }}>
                 {logs.map(log => (
@@ -2122,10 +2116,10 @@ export default function App() {
           {activeTab === 'settings' && (
             <div className="prefs">
               {macPageNav(true, settingsActions)}
-              <div className="prefs-header">
+              {!isMac && <div className="prefs-header">
                 <h1 className="content-title">{tr('首选项设置')}</h1>
                 <p className="content-subtitle">{tr('配置本地监听端口、内核、DNS 与系统集成')}</p>
-              </div>
+              </div>}
 
               <section className="prefs-section">
                 <h2 className="prefs-section-title">{tr('界面')}</h2>

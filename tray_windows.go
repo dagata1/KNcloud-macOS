@@ -192,11 +192,11 @@ func (t *trayController) buildMenu() {
 	// ---------- 代理模式（与仪表盘四个按钮一致，四选一互斥） ----------
 	// 绕过大陆 / 全局代理 / 全局直连 = 系统代理模式下的分流策略；TUN 模式 = 虚拟网卡全局接管。
 	// TUN 运行时只勾 TUN；点任一策略即关 TUN 并按该策略回到系统代理模式。
-	miMode := systray.AddMenuItem(L("代理模式", "Proxy mode"), L("绕过大陆 / 全局代理 / 全局直连 / TUN 模式（四选一）", "Bypass China / Global proxy / Direct / TUN mode (pick one)"))
+	miMode := systray.AddMenuItem(L("代理模式", "Proxy mode"), L("全局直连 / 绕过大陆 / 全局代理 / TUN 模式（四选一）", "Direct / Bypass China / Global proxy / TUN mode (pick one)"))
 	for _, m := range []struct{ id, label, tip string }{
+		{"direct", L("全局直连", "Direct"), L("系统代理：全部直连", "System proxy: everything direct")},
 		{"bypass-cn", L("绕过大陆", "Bypass China"), L("系统代理：国内直连，其余走代理", "System proxy: China direct, the rest via proxy")},
 		{"global", L("全局代理", "Global proxy"), L("系统代理：全部走代理（局域网除外）", "System proxy: everything via proxy (except LAN)")},
-		{"direct", L("全局直连", "Direct"), L("系统代理：全部直连", "System proxy: everything direct")},
 	} {
 		child := miMode.AddSubMenuItemCheckbox(m.label, m.tip, !tunRunning && routingMode == m.id)
 		modeID := m.id
