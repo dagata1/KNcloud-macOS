@@ -597,7 +597,14 @@ export default function App() {
       setNodes(await GetNodes());
       showToast(tr('订阅及节点已更新'), 'success');
     } catch (e) {
-      showToast(tr('更新失败：') + (e?.message || e), 'error');
+      const msg = String(e?.message || e);
+      // 登录过期：后端已清空账号，界面同步回登录页（否则仍显示旧邮箱，之后一直报 not logged in）
+      try { setAccount(await GetAccount()); } catch (_) { /* ignore */ }
+      if (/session expired|not logged in/i.test(msg)) {
+        showToast(tr('登录已过期，请重新登录'), 'error');
+      } else {
+        showToast(tr('更新失败：') + msg, 'error');
+      }
     } finally {
       setSyncing(false);
     }
