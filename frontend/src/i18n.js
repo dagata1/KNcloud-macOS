@@ -58,6 +58,7 @@ export const en = {
   '网页登录失败': 'Website sign-in failed',
   '订阅及节点已更新': 'Subscription and nodes updated',
   '更新失败：': 'Update failed: ',
+  '登录已过期，请重新登录': 'Session expired, please log in again',
   '已切换至「{name}」，已断开旧连接，请刷新页面查看新 IP': 'Switched to "{name}". Old connections closed; reload pages to see the new IP',
   '切换节点失败：': 'Failed to switch node: ',
   '正在启动 TUN…': 'Starting TUN…',
