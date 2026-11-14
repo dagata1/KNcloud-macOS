@@ -132,6 +132,7 @@ export const en = {
   '已连接': 'Connected',
   '上下行仅统计经代理节点的流量': 'Up/down counts proxied traffic only',
   '打开右侧开关开始连接': 'Turn on the switch to connect',
+  '打开开关开始连接': 'Turn on to connect',
   '请更换节点后重试': 'Try another node',
   '请在下方选择节点': 'Pick a node below',
   '连接开关': 'Connection switch',
