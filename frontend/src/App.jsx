@@ -74,6 +74,27 @@ const protoLabel = (n) => (n.protocol === 'HTTP' && n.security === 'tls') ? 'HTT
 
 const CLOUD_PATH = 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z';
 // 简易模式的云形图标：连接中沿轮廓流光描线，已连接时完整点亮
+// 简洁模式节点行：从节点名里取地区简码（香港[V6] → HK）和末尾标签（[V6] → V6）
+const REGION_CODES = [
+  ['香港', 'HK'], ['hong kong', 'HK'], ['澳门', 'MO'], ['台湾', 'TW'], ['taiwan', 'TW'], ['日本', 'JP'], ['japan', 'JP'],
+  ['韩国', 'KR'], ['korea', 'KR'], ['新加坡', 'SG'], ['singapore', 'SG'], ['美国', 'US'], ['united states', 'US'], ['usa', 'US'],
+  ['英国', 'UK'], ['united kingdom', 'UK'], ['德国', 'DE'], ['germany', 'DE'], ['法国', 'FR'], ['france', 'FR'], ['荷兰', 'NL'],
+  ['netherlands', 'NL'], ['加拿大', 'CA'], ['canada', 'CA'], ['澳大利亚', 'AU'], ['澳洲', 'AU'], ['australia', 'AU'], ['俄罗斯', 'RU'],
+  ['russia', 'RU'], ['印度尼西亚', 'ID'], ['印尼', 'ID'], ['印度', 'IN'], ['india', 'IN'], ['土耳其', 'TR'], ['turkey', 'TR'],
+  ['越南', 'VN'], ['vietnam', 'VN'], ['泰国', 'TH'], ['thailand', 'TH'], ['马来西亚', 'MY'], ['malaysia', 'MY'], ['菲律宾', 'PH'],
+  ['philippines', 'PH'], ['巴西', 'BR'], ['brazil', 'BR'], ['阿根廷', 'AR'], ['argentina', 'AR'], ['意大利', 'IT'], ['italy', 'IT'],
+  ['西班牙', 'ES'], ['spain', 'ES'], ['瑞士', 'CH'], ['迪拜', 'AE'], ['阿联酋', 'AE'], ['dubai', 'AE'],
+];
+function splitNodeName(name = '') {
+  const m = String(name).match(/^(.*?)\s*[\[(（【]([^\])）】]{1,8})[\])）】]\s*$/);
+  const base = (m ? m[1] : String(name)).trim() || String(name);
+  const tag = m ? m[2].trim() : '';
+  const low = base.toLowerCase();
+  const hit = REGION_CODES.find(([k]) => low.includes(k));
+  const code = hit ? hit[1] : (base.match(/\b([A-Z]{2})\b/) || [])[1] || Array.from(base)[0] || '?';
+  return { base, tag, code };
+}
+
 function SimpleCloudIcon() {
   return (
     <svg className="simple-cloud" viewBox="0 0 24 24" aria-hidden="true">
@@ -101,7 +122,7 @@ export default function App() {
   // 简易模式内容少，窗口切到紧凑尺寸；普通模式恢复默认大小
   // （全局最小尺寸在 main.go 里放开了到 380x500，这里的目标值在其之上）
   // macOS 顶部多一条约 30px 的标题栏区域，简易模式窗口相应加高，节点列表底部留白才与左右边距一致
-  const windowSizes = (mac) => ({ simple: mac ? { w: 420, h: 530 } : { w: 420, h: 505 }, classic: mac ? { w: 920, h: 580 } : { w: 1120, h: 760 } });
+  const windowSizes = (mac) => ({ simple: mac ? { w: 340, h: 524 } : { w: 340, h: 495 }, classic: mac ? { w: 920, h: 580 } : { w: 1120, h: 760 } });
   const applyWindowSize = async (mode, keepCenter = false) => {
     // 启动加载时 isMac 可能还是默认值，这里以 Go 端返回的平台为准
     const mac = ((await getPlatformOnce()) || platform) === 'darwin';
@@ -276,6 +297,9 @@ export default function App() {
     if (b >= 1024 ** 3) return (b / 1024 ** 3).toFixed(2) + ' GB';
     return (b / 1024 ** 2).toFixed(0) + ' MB';
   };
+
+  // 简洁模式用：≥100 GB 不显示小数，窄窗口里更清爽
+  const fmtGBShort = (b) => (b >= 100 * 1024 ** 3 ? Math.round(b / 1024 ** 3) + ' GB' : fmtGB(b));
 
   // 应用内 Toast 通知（替代原生 alert）
   const [toasts, setToasts] = useState([]);
@@ -1403,8 +1427,8 @@ export default function App() {
                   </div>
                   <div className="sb-usage">
                     <div className="sb-usage-row">
-                      <span>{tr('已用')} <b>{fmtGB(used)}</b></span>
-                      <span>{limited ? tr('{pct}% · 共 {total}', { pct: pct < 10 ? pct.toFixed(1) : Math.round(pct), total: fmtGB(total) }) : tr('不限流量')}</span>
+                      <span>{tr('已用')} <b>{fmtGBShort(used)}</b></span>
+                      <span>{limited ? tr('{pct}% · 共 {total}', { pct: pct < 10 ? pct.toFixed(1) : Math.round(pct), total: fmtGBShort(total) }) : tr('不限流量')}</span>
                     </div>
                     {limited && <div className="simple-account-bar"><div style={{ width: `${pct}%` }} /></div>}
                   </div>
@@ -1433,13 +1457,12 @@ export default function App() {
                   <>
                     <span className="sb-sp">↑ {status.upSpeed || '0 B/s'}</span>
                     <span className="sb-sp">↓ {status.downSpeed || '0 B/s'}</span>
-                    <span className="sb-sep">·</span>
-                    <span className="sb-compact-node">{activeNode ? activeNode.name : ''}{activeNode && activeNode.delay > 0 ? ` ${activeNode.delay}ms` : ''}</span>
+
                   </>
                 ) : (
                   <span className="sb-compact-node">
                     {simpleState === 'off'
-                      ? tr('打开右侧开关开始连接') + (activeNode ? ' · ' + activeNode.name : '')
+                      ? tr('打开开关开始连接')
                       : simpleState === 'fail'
                         ? tr('请更换节点后重试')
                         : simpleState === 'none'
@@ -1473,9 +1496,19 @@ export default function App() {
                   className={`sb-node-row ${n.active ? 'active' : ''}`}
                   onClick={() => { if (!n.active) handleSimpleSelectNode(n.id); }}
                 >
-                  <span className="sb-node-check">{n.active && <Check size={14} />}</span>
-                  <span className="sb-node-row-name">{n.name}</span>
-                  <span className="sb-node-row-delay" style={{ color: delayColor(n.delay) }}>{delayText(n.delay)}</span>
+                  {(() => {
+                    const nn = splitNodeName(n.name);
+                    const lvl = n.delay > 0 ? (n.delay < 300 ? 'good' : n.delay < 800 ? 'mid' : 'bad') : n.delay === -2 ? 'bad' : 'none';
+                    return (
+                      <>
+                        <span className="sb-node-code">{nn.code}</span>
+                        <span className="sb-node-row-name" title={n.name}>{nn.base}</span>
+                        {nn.tag && <span className="sb-node-tag">{nn.tag}</span>}
+                        <span className={`sb-node-row-delay lv-${lvl}`}>{delayText(n.delay)}</span>
+                        <span className="sb-node-check">{n.active && <Check size={14} strokeWidth={2.6} />}</span>
+                      </>
+                    );
+                  })()}
                 </button>
               ))}
             </div>
