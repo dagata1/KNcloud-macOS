@@ -2517,3 +2517,7 @@ select.win11-input option {
 .sb-node-list::-webkit-scrollbar { width: 4px; }
 .sb-node-list::-webkit-scrollbar-thumb { background: transparent; }
 .sb-node-list:hover::-webkit-scrollbar-thumb { background: var(--border-default); }
+
+/* 简洁模式：外层不显示滚动条（内容超高时仍可滚动） */
+.simple-body.sb-cards { scrollbar-width: none; }
+.simple-body.sb-cards::-webkit-scrollbar { display: none; }
