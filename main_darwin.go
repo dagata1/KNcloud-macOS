@@ -55,7 +55,7 @@ func main() {
 		Title:     "KNcloud",
 		Width:     width,
 		Height:    height,
-		MinWidth:  380,
+		MinWidth:  340,
 		MinHeight: 480,
 		Frameless: false, // 使用 macOS 原生窗口：系统红绿灯、圆角、描边与阴影；标题栏隐藏、内容铺满
 		AssetServer: &assetserver.Options{
