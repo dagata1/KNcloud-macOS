@@ -36,7 +36,17 @@ type Options struct {
 	Poll time.Duration
 	// Timeout 单次 HTTP 请求超时。
 	Timeout time.Duration
+	// Headers 额外请求头（官网账户订阅带设备登记头，见主包 device.go）。
+	Headers map[string]string
 }
+
+// HTTPError 订阅服务器返回了非 200 状态。
+type HTTPError struct {
+	StatusCode int
+	Status     string
+}
+
+func (e *HTTPError) Error() string { return "HTTP " + e.Status }
 
 // WaitPort 等本地代理端口可连，返回端口；超过 opt.Wait 返回 ErrProxyUnavailable。
 func WaitPort(opt Options) (int, error) {
@@ -87,22 +97,25 @@ func Fetch(rawURL string, opt Options) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return get(client, rawURL)
+	return get(client, rawURL, opt.Headers)
 }
 
-func get(client *http.Client, rawURL string) (string, error) {
+func get(client *http.Client, rawURL string, headers map[string]string) (string, error) {
 	req, err := http.NewRequest("GET", rawURL, nil)
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("User-Agent", UserAgent)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %s", resp.Status)
+		return "", &HTTPError{StatusCode: resp.StatusCode, Status: resp.Status}
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, MaxBody))
 	if err != nil {

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,6 +34,9 @@ type AccountInfo struct {
 	// 持久化由 persistedConfig.AccountSubURL 单独加密存取（见 config.go）。
 	SubURL string `json:"-"`
 	SubID  string `json:"subId"` // 关联的订阅 ID
+	// DeviceSub 为 true 表示 SubURL 是面板为本设备下发的 device_subscribe_url（设备管理），
+	// 而不是账户通用的 subscribe_url。设备订阅失效（设备被移除）时据此清除并回到登录页。
+	DeviceSub bool `json:"deviceSub,omitempty"`
 	// DomainCheckedAt 上次向域名接口查询官网地址的时间（Unix 秒）。
 	// 查询只在每周一次的自动更新订阅时进行，频繁请求容易导致域名被墙。
 	DomainCheckedAt int64 `json:"domainCheckedAt,omitempty"`
@@ -90,8 +94,12 @@ func (a *App) Login(email, password string) (AccountInfo, error) {
 // completeLogin 用已有凭证（auth_data）完成登录：拉取订阅地址与套餐 → 写入账户 → 导入订阅节点。
 // 密码登录与网页授权回传（weblogin.go）共用此入口。
 func (a *App) completeLogin(domain, email, token string) (AccountInfo, error) {
-	transfer, usedUp, usedDown, expire, planName, subURL, subEmail, err := v2boardGetSubscribe(domain, token)
+	transfer, usedUp, usedDown, expire, planName, subURL, subEmail, deviceSub, err := v2boardGetSubscribe(domain, token)
 	if err != nil {
+		var pe *panelMsgError
+		if errors.As(err, &pe) {
+			return a.GetAccount(), err // 面板的提示（如设备数已达上限）原样给界面
+		}
 		return a.GetAccount(), fmt.Errorf("login succeeded, but failed to fetch subscription: %v", err)
 	}
 	if subURL == "" {
@@ -106,6 +114,7 @@ func (a *App) completeLogin(domain, email, token string) (AccountInfo, error) {
 	var subID string
 	a.mu.Lock()
 	checkedAt := a.account.DomainCheckedAt
+	prevSubID := a.account.SubID // 设备被移除后回到登录页时保留，重新登录沿用原订阅条目
 	a.account = AccountInfo{
 		LoggedIn:       true,
 		Skipped:        false,
@@ -118,12 +127,22 @@ func (a *App) completeLogin(domain, email, token string) (AccountInfo, error) {
 		Expire:         expire,
 		AuthToken:      token,
 		SubURL:         subURL,
+		DeviceSub:      deviceSub,
 	}
 	// 已有相同 URL 的订阅则复用，否则新建
 	for i := range a.subscriptions {
 		if a.subscriptions[i].URL == subURL {
 			subID = a.subscriptions[i].ID
 			break
+		}
+	}
+	if subID == "" && prevSubID != "" {
+		for i := range a.subscriptions {
+			if a.subscriptions[i].ID == prevSubID {
+				a.subscriptions[i].URL = subURL
+				subID = prevSubID
+				break
+			}
 		}
 	}
 	if subID == "" {
@@ -164,7 +183,7 @@ func (a *App) RefreshAccount() (AccountInfo, error) {
 		return a.GetAccount(), fmt.Errorf("not logged in")
 	}
 
-	transfer, usedUp, usedDown, expire, planName, subURL, subEmail, err := v2boardGetSubscribe(domain, token)
+	transfer, usedUp, usedDown, expire, planName, subURL, subEmail, deviceSub, err := v2boardGetSubscribe(domain, token)
 	if err != nil {
 		if err == errTokenInvalid {
 			a.mu.Lock()
@@ -188,6 +207,7 @@ func (a *App) RefreshAccount() (AccountInfo, error) {
 	urlChanged := subURL != "" && subURL != oldSubURL
 	if urlChanged {
 		a.account.SubURL = subURL
+		a.account.DeviceSub = deviceSub
 		for i := range a.subscriptions {
 			if a.subscriptions[i].ID == subID {
 				a.subscriptions[i].URL = subURL
@@ -215,6 +235,7 @@ func v2boardLogin(domain, email, password string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	setDeviceHeaders(req)
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
@@ -239,6 +260,10 @@ func v2boardLogin(domain, email, password string) (string, error) {
 		if msg == "" {
 			msg = fmt.Sprintf("HTTP %d", resp.StatusCode)
 		}
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && out.Message != "" {
+			// 面板的提示（密码错误、设备数已达上限等）原样给界面
+			return "", &panelMsgError{status: resp.StatusCode, msg: out.Message}
+		}
 		return "", fmt.Errorf("login failed: %s", msg)
 	}
 	token := ""
@@ -253,36 +278,67 @@ func v2boardLogin(domain, email, password string) (string, error) {
 	return token, nil
 }
 
-// v2boardGetSubscribe 返回 (总流量, 已用上行, 已用下行, 到期描述, 套餐名, 订阅地址, 邮箱, err)
+// v2boardGetSubscribe 返回 (总流量, 已用上行, 已用下行, 到期描述, 套餐名, 订阅地址, 邮箱, 是否设备订阅, err)
 var errTokenInvalid = fmt.Errorf("session expired, please log in again")
 
-func v2boardGetSubscribe(domain, token string) (int64, int64, int64, string, string, string, string, error) {
+// errDeviceRemoved 设备订阅失效（本设备已在面板「设备管理」中被移除）：已清除账户，需重新登录。
+var errDeviceRemoved = fmt.Errorf("device removed, please log in again")
+
+// panelMsgError 面板以 4xx + message 拒绝请求（如设备数已达上限）。Error() 带 "panel: " 前缀，
+// 前端据此只显示面板的原话，而不是笼统的「更新失败」。
+type panelMsgError struct {
+	status int
+	msg    string
+}
+
+func (e *panelMsgError) Error() string { return "panel: " + e.msg }
+
+// isSessionExpiredMsg 面板 UserAuth 的会话失效提示（未登录或登陆已过期 / 未登录或权限不足）。
+func isSessionExpiredMsg(msg string) bool {
+	m := strings.ToLower(msg)
+	return msg == "" || strings.Contains(msg, "未登录") || strings.Contains(msg, "过期") ||
+		strings.Contains(m, "expired") || strings.Contains(m, "unauthenticated") || strings.Contains(m, "not logged")
+}
+
+func v2boardGetSubscribe(domain, token string) (int64, int64, int64, string, string, string, string, bool, error) {
 	domain = strings.TrimRight(domain, "/")
 	req, err := http.NewRequest("GET", domain+"/api/v1/user/getSubscribe", nil)
 	if err != nil {
-		return 0, 0, 0, "", "", "", "", err
+		return 0, 0, 0, "", "", "", "", false, err
 	}
 	req.Header.Set("Authorization", token)
+	setDeviceHeaders(req)
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, 0, 0, "", "", "", "", fmt.Errorf("unable to connect to %s: %v", domain, err)
+		return 0, 0, 0, "", "", "", "", false, fmt.Errorf("unable to connect to %s: %v", domain, err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == 401 || resp.StatusCode == 403 {
-		return 0, 0, 0, "", "", "", "", errTokenInvalid
+	if resp.StatusCode == 401 {
+		return 0, 0, 0, "", "", "", "", false, errTokenInvalid
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return 0, 0, 0, "", "", "", "", err
+		return 0, 0, 0, "", "", "", "", false, err
 	}
 
 	var out struct {
-		Data map[string]interface{} `json:"data"`
+		Data    map[string]interface{} `json:"data"`
+		Message string                 `json:"message"`
 	}
-	if err := json.Unmarshal(data, &out); err != nil || out.Data == nil {
-		return 0, 0, 0, "", "", "", "", fmt.Errorf("failed to parse subscription data (HTTP %d)", resp.StatusCode)
+	jsonErr := json.Unmarshal(data, &out)
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		// 403 + 会话失效提示（或无提示）= 旧行为：登录过期。其余 4xx 带提示（如设备数已达上限）原样上报。
+		if resp.StatusCode == 403 && isSessionExpiredMsg(out.Message) {
+			return 0, 0, 0, "", "", "", "", false, errTokenInvalid
+		}
+		if out.Message != "" {
+			return 0, 0, 0, "", "", "", "", false, &panelMsgError{status: resp.StatusCode, msg: out.Message}
+		}
+	}
+	if jsonErr != nil || out.Data == nil {
+		return 0, 0, 0, "", "", "", "", false, fmt.Errorf("failed to parse subscription data (HTTP %d)", resp.StatusCode)
 	}
 	d := out.Data
 
@@ -302,7 +358,14 @@ func v2boardGetSubscribe(domain, token string) (int64, int64, int64, string, str
 		return v
 	}
 
-	subURL := getStr("subscribe_url")
+	// 面板「设备管理」为本设备下发的订阅地址优先；旧面板没有该字段，行为不变
+	deviceSub := false
+	subURL := strings.TrimSpace(getStr("device_subscribe_url"))
+	if subURL != "" {
+		deviceSub = true
+	} else {
+		subURL = getStr("subscribe_url")
+	}
 	if subURL == "" {
 		if t := getStr("token"); t != "" {
 			subURL = domain + "/api/v1/client/subscribe?token=" + t
@@ -329,7 +392,7 @@ func v2boardGetSubscribe(domain, token string) (int64, int64, int64, string, str
 		}
 	}
 
-	return getInt("transfer_enable"), getInt("u"), getInt("d"), expireStr, planName, subURL, getStr("email"), nil
+	return getInt("transfer_enable"), getInt("u"), getInt("d"), expireStr, planName, subURL, getStr("email"), deviceSub, nil
 }
 
 // SyncNodes 手动同步 KNcloud 账户订阅节点
