@@ -175,6 +175,10 @@ func (a *App) coreConfigJSON(nodePtr *NodeItem) (string, error) {
 	}
 
 	var rules []ruleObj
+	if proxyOut != nil {
+		// 设备上报的保留主机最先匹配、一律走当前节点（节点自己应答，见 devping.go）
+		rules = append(rules, devicePingRule())
+	}
 	// sstap:<file> 自定义 .rules 在路由表层分流，到达 Xray 的流量本就该全部走代理，
 	// 因此对它而言等同于 global。
 	// 内置四种策略不再依赖路由表分流（TUN 只送默认路由进来），由下面这套规则真正生效，

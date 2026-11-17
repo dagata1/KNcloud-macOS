@@ -1,53 +1,54 @@
 package main
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
 )
 
-// 设备直连上报（面板「我的设备」按设备统计流量）。
+// 设备上报（面板「我的设备」按设备统计流量）——经当前节点，不直连官网。
 //
 // 节点按「用户 + 来源 IP」上报流量，面板按设备出现过的 IP 把流量归到设备上。
-// 但本程序访问官网（登录、拉订阅）一般经本地代理 / 其他代理出去，面板看到的不是
-// 连节点时的那个 IP（比如国内 IPv6），流量就落进「未识别设备」。
+// 本程序访问官网（登录、拉订阅）一般经本地代理 / 其他代理出去，面板看到的不是
+// 连节点时的那个 IP，流量就落进「未识别设备」。
 //
-// 所以登录后定时向官网发一个很小的上报：POST /api/v1/user/device/ping，
-// 带登录凭证（Authorization）与设备登记头（X-KN-Device-*），并且
-//   - 绕开本程序自己的代理：Transport 不设代理（不读系统代理 / 环境变量）；
-//     TUN 接管时 socket 绑定物理网卡（与内核到节点的出站同一张网卡），不进 TUN；
-//   - IPv4、IPv6 各发一次（tcp4 / tcp6，没有公网 IPv6 地址就不发 IPv6）：
-//     连节点走哪个协议族不确定，两个都报，面板两个都记。
+// 所以连上节点后，本程序经自己的本地 HTTP 代理（即正常代理路由，不绕开）请求保留
+// 主机 http://device.kncloud.internal/v1/ping（带本机设备 ID）。这个请求随代理
+// 协议加密送到当前节点，knode 在节点上直接应答（不会出站，也不解析域名），记下这条
+// 代理连接认证出的用户和它看到的来源 IP，再经节点与面板之间已有的控制通道上报。
+// 官网域名不出现在本机的任何直连请求里（之前的直连上报每 10 分钟从国内直连官网，
+// 会暴露域名，已取消）。
 //
-// 时机：登录后约 15 秒、网络变化（本机地址 / TUN 出口 / 账户变化，间隔至少 70 秒）、
-// 以及每 10 分钟。失败（官网直连不通、超时、面板拒绝）一律静默，不提示、不重试，
-// 下个周期再说。面板对同一设备同一地址每分钟只收一次，并按账户限频。
+// 内核配置里有一条最先匹配的路由：device.kncloud.internal → proxy（见 core.go），
+// 任何策略（含全局直连、TUN）下都走当前节点，不会经 direct 出站做 DNS 解析。
+//
+// 时机：连上 / 切换节点后（约 10 秒内）、网络变化（本机地址 / TUN 出口 / 账户变化）、
+// 以及每 10 分钟；未登录、内核未运行或没有节点（直连配置）时不发。失败一律静默。
 const (
-	devicePingPath    = "/api/v1/user/device/ping"
+	devicePingHost    = "device.kncloud.internal"
+	devicePingURL     = "http://" + devicePingHost + "/v1/ping"
 	devicePingEvery   = 10 * time.Minute
-	devicePingMinGap  = 70 * time.Second
-	devicePingCheck   = 30 * time.Second
+	devicePingMinGap  = 10 * time.Second
+	devicePingCheck   = 10 * time.Second
 	devicePingFirst   = 15 * time.Second
 	devicePingTimeout = 10 * time.Second
 )
 
 // devicePingState 上一次上报时的状态（只在 devicePingLoop 的 goroutine 里用）。
 type devicePingState struct {
-	account string // 官网地址 + 凭证（换账户 / 重新登录立即上报）
-	addrs   string // 本机地址指纹（换网络立即上报）
-	egress  string // TUN 物理出口（开关 TUN 立即上报）
-	last    time.Time
+	key  string // 账户 + 节点 + 本机地址 + TUN 出口；变了就尽快重报
+	last time.Time
 }
 
-// devicePingSend 实际发送（单测替换）。
-var devicePingSend = devicePingAll
+// devicePingSend 实际发送（单测替换）：经本地 HTTP 代理 127.0.0.1:port。
+var devicePingSend = func(port int) { _ = devicePingVia(port) }
 
 func (a *App) devicePingLoop() {
 	ticker := time.NewTicker(devicePingCheck)
@@ -66,76 +67,63 @@ func (a *App) devicePingLoop() {
 	}
 }
 
-// devicePingTick 判断是否该上报，该报就发（同步，最多两次 devicePingTimeout）。
+// devicePingTick 判断是否该上报，该报就发（同步，最多 devicePingTimeout）。
 func (a *App) devicePingTick(st *devicePingState, now time.Time, addrs string) bool {
 	if !a.rlockWithin(2 * time.Second) {
 		return false
 	}
 	acc := a.account
 	egress := a.tunEgressIface
+	node := a.coreNodeID
 	running := a.coreRunning || a.tunRunning
 	a.mu.RUnlock()
-	if !acc.LoggedIn || acc.AuthToken == "" || acc.Domain == "" || !running {
-		st.account = "" // 再次登录 / 内核恢复后立即上报
+	port := int(a.liveHTTPPort.Load())
+	if !acc.LoggedIn || acc.AuthToken == "" || !running || node == "" || port <= 0 {
+		st.key = "" // 再次登录 / 连上节点后立即上报
 		return false
 	}
-	key := acc.Domain + "\x00" + acc.AuthToken
-	changed := key != st.account || addrs != st.addrs || egress != st.egress
-	due := st.last.IsZero() || now.Sub(st.last) >= devicePingEvery || (changed && now.Sub(st.last) >= devicePingMinGap)
+	key := strings.Join([]string{acc.Domain, acc.AuthToken, node, addrs, egress}, "\x00")
+	due := st.last.IsZero() || now.Sub(st.last) >= devicePingEvery || (key != st.key && now.Sub(st.last) >= devicePingMinGap)
 	if !due {
 		return false
 	}
-	st.account, st.addrs, st.egress, st.last = key, addrs, egress, now
-	devicePingSend(acc.Domain, acc.AuthToken, egress, hasGlobalIPv6())
+	st.key, st.last = key, now
+	devicePingSend(port)
 	return true
 }
 
-// devicePingAll IPv4（总是）与 IPv6（有公网 IPv6 地址时）各发一次；错误全部忽略。
-func devicePingAll(domain, token, egress string, v6 bool) {
-	_ = devicePingOnce(domain, token, "tcp4", egress)
-	if v6 {
-		_ = devicePingOnce(domain, token, "tcp6", egress)
-	}
-}
-
-// devicePingOnce 用指定协议族（tcp4 / tcp6）直连官网发一次上报。
-// egress 非空（TUN 接管中）时 socket 绑定该物理网卡。
-func devicePingOnce(domain, token, network, egress string) error {
-	d := &net.Dialer{Timeout: 8 * time.Second}
-	if egress != "" {
-		if ifc, err := net.InterfaceByName(egress); err == nil {
-			d.Control = devicePingBindControl(uint32(ifc.Index))
-		}
-	}
+// devicePingVia 经本地 HTTP 代理发一次上报；节点应答 204 才算成功。
+func devicePingVia(port int) error {
+	proxy := &url.URL{Scheme: "http", Host: fmt.Sprintf("127.0.0.1:%d", port)}
 	tr := &http.Transport{
-		Proxy: nil, // 直连：不经本程序的本地代理，也不读系统代理 / 环境变量
-		DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
-			return d.DialContext(ctx, network, addr)
-		},
-		TLSHandshakeTimeout:   8 * time.Second,
+		Proxy:                 http.ProxyURL(proxy),
 		ResponseHeaderTimeout: 8 * time.Second,
 		DisableKeepAlives:     true,
 	}
 	defer tr.CloseIdleConnections()
 	c := &http.Client{Timeout: devicePingTimeout, Transport: tr}
-	req, err := http.NewRequest("POST", strings.TrimRight(domain, "/")+devicePingPath, strings.NewReader("{}"))
+	id := deviceID()
+	req, err := http.NewRequest("GET", devicePingURL+"?id="+url.QueryEscape(id), nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", token)
+	req.Header.Set(hdrDeviceID, id)
 	req.Header.Set("User-Agent", devicePingUA())
-	setDeviceHeaders(req)
 	resp, err := c.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 8<<10))
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("device ping: HTTP %d", resp.StatusCode)
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4<<10))
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("device report: HTTP %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// devicePingRule 内核路由里最先匹配的一条：保留主机一律走 proxy（有节点时）。
+func devicePingRule() ruleObj {
+	return ruleObj{Type: "field", Domain: []string{"full:" + devicePingHost}, OutboundTag: "proxy"}
 }
 
 func devicePingUA() string {
@@ -184,13 +172,4 @@ func localAddrs() []string {
 func localAddrFingerprint() string {
 	sum := sha256.Sum256([]byte(strings.Join(localAddrs(), ",")))
 	return hex.EncodeToString(sum[:8])
-}
-
-func hasGlobalIPv6() bool {
-	for _, s := range localAddrs() {
-		if strings.Contains(s, ":") {
-			return true
-		}
-	}
-	return false
 }
