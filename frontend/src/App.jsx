@@ -335,7 +335,7 @@ export default function App() {
     });
     // 托盘等后端操作的结果提示
     const offToast = EventsOn('kncloud:toast', (t) => {
-      if (t && t.msg) showToast(t.msg, t.type || 'info');
+      if (t && t.msg) showToast(tr(t.msg), t.type || 'info');
     });
     return () => {
       if (typeof off === 'function') off();
@@ -583,7 +583,8 @@ export default function App() {
     });
     const offErr = EventsOn('kncloud:web-login-error', (msg) => {
       setWebLoginWaiting(false);
-      showToast(trMsg(String(msg || '')) || tr('网页登录失败'), 'error');
+      const m = String(msg || '');
+      showToast((/^panel: /.test(m) ? m.slice(7) : trMsg(m)) || tr('网页登录失败'), 'error');
     });
     return () => {
       if (typeof offOk === 'function') offOk();
@@ -624,7 +625,12 @@ export default function App() {
       const msg = String(e?.message || e);
       // 登录过期：后端已清空账号，界面同步回登录页（否则仍显示旧邮箱，之后一直报 not logged in）
       try { setAccount(await GetAccount()); } catch (_) { /* ignore */ }
-      if (/session expired|not logged in/i.test(msg)) {
+      if (/^panel: /.test(msg)) {
+        // 面板拒绝（如设备数已达上限）：显示面板原话
+        showToast(msg.slice(7), 'error');
+      } else if (/device removed/i.test(msg)) {
+        showToast(tr('此设备已在面板中移除，请重新登录'), 'error');
+      } else if (/session expired|not logged in/i.test(msg)) {
         showToast(tr('登录已过期，请重新登录'), 'error');
       } else {
         showToast(tr('更新失败：') + msg, 'error');

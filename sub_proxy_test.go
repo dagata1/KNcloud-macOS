@@ -27,7 +27,7 @@ func TestSubscriptionFetchAlwaysViaLocalProxy(t *testing.T) {
 
 	a := newTestApp(t)
 	// 内核没在运行：报错，源站一次都没被直连
-	if _, err := a.fetchSubscriptionContent(origin.URL); !errors.Is(err, subfetch.ErrProxyUnavailable) {
+	if _, err := a.fetchSubscriptionContent(origin.URL, nil); !errors.Is(err, subfetch.ErrProxyUnavailable) {
 		t.Fatalf("core not running: want ErrProxyUnavailable, got %v", err)
 	}
 	if atomic.LoadInt32(&hits) != 0 {
@@ -42,7 +42,7 @@ func TestSubscriptionFetchAlwaysViaLocalProxy(t *testing.T) {
 	}
 	a.coreRunning = true
 	a.mu.Unlock()
-	got, err := a.fetchSubscriptionContent(origin.URL)
+	got, err := a.fetchSubscriptionContent(origin.URL, nil)
 	if err != nil || got != "sub-content" || atomic.LoadInt32(&hits) != 1 {
 		t.Fatalf("via local proxy: got %q err=%v hits=%d", got, err, hits)
 	}

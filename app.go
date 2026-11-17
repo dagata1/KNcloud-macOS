@@ -329,6 +329,9 @@ func (a *App) startup(ctx context.Context) {
 	// 定时自动更新订阅（套餐/流量 + 节点），间隔见设置 subUpdateHours
 	go a.subAutoUpdateLoop()
 
+	// 设备直连上报：让面板按设备统计流量时认得出本机连节点用的 IP（见 devping.go）
+	go a.devicePingLoop()
+
 	// 登录过官网账户：启动时自动同步订阅节点
 	go func() {
 		time.Sleep(2 * time.Second)
@@ -351,6 +354,8 @@ func (a *App) startup(ctx context.Context) {
 				if a.ctx != nil {
 					runtime.EventsEmit(a.ctx, "kncloud:refresh")
 				}
+			} else {
+				a.notifyDeviceRemoved(err) // 设备订阅失效：界面回到登录页
 			}
 		}
 		// 没有订阅或同步失败：仍对本地已有节点做一轮启动测速
@@ -1295,12 +1300,29 @@ func (a *App) refreshSubscription(id string) error {
 	}
 	subURL := sub.URL
 	subName := sub.Name
+	// 官网账户订阅带设备登记头（device.go）；手动添加的第三方订阅不带
+	isAccountSub := a.account.LoggedIn && a.account.SubID == id
+	isDeviceSub := isAccountSub && a.account.DeviceSub && a.account.SubURL == subURL
 	a.mu.RUnlock()
 
-	content, err := a.fetchSubscriptionContent(subURL)
+	var hdr map[string]string
+	if isAccountSub {
+		hdr = deviceHeaders()
+	}
+	content, err := a.fetchSubscriptionContent(subURL, hdr)
 	if err != nil {
 		a.mu.Lock()
 		a.addLogInternal("error", fmt.Sprintf("Subscription [%s] fetch failed: %v", subName, err))
+		// 设备订阅失效（本设备已在面板中被移除）：清除设备订阅地址与凭证，回到登录页
+		// （与 getSubscribe 判定登录过期时一致；保留订阅条目与节点，重新登录后沿用该条目）
+		var he *subfetch.HTTPError
+		if isDeviceSub && errors.As(err, &he) && deviceSubInvalidStatus(he.StatusCode) &&
+			a.account.SubID == id && a.account.SubURL == subURL {
+			a.account = AccountInfo{Domain: a.account.Domain, DomainCheckedAt: a.account.DomainCheckedAt, SubID: id}
+			a.savePersisted()
+			a.addLogInternal("warn", "Device subscription is no longer valid (device removed in the panel), please log in again")
+			err = errDeviceRemoved
+		}
 		a.mu.Unlock()
 		return err
 	}
@@ -1454,11 +1476,12 @@ var subProxyWait = 10 * time.Second
 // fetchSubscriptionContent 拉取订阅内容：一律经本程序的本地 HTTP 代理（内核常开，分流 /
 // 直连由内核按当前模式决定），不直连兜底。内核正在重启时先等端口起来（最多 subProxyWait），
 // 还不通就报错。
-func (a *App) fetchSubscriptionContent(rawURL string) (string, error) {
+func (a *App) fetchSubscriptionContent(rawURL string, headers map[string]string) (string, error) {
 	content, err := subfetch.Fetch(rawURL, subfetch.Options{
 		Port:    func() int { return int(a.liveHTTPPort.Load()) },
 		Wait:    subProxyWait,
 		Timeout: 25 * time.Second,
+		Headers: headers,
 	})
 	if err != nil {
 		return "", fmt.Errorf("via local proxy: %w", err)

@@ -64,8 +64,11 @@ func (a *App) trayUpdateSubscription() {
 	ctx := a.appCtx()
 	if err != nil {
 		a.addLogInternal("error", fmt.Sprintf("Tray: subscription update failed: %v", err))
+		if ctx != nil && errors.Is(err, errDeviceRemoved) {
+			wailsruntime.EventsEmit(ctx, "kncloud:refresh") // 界面回到登录页
+		}
 		if ctx != nil {
-			wailsruntime.EventsEmit(ctx, "kncloud:toast", map[string]string{"msg": "更新失败：" + err.Error(), "type": "error"})
+			wailsruntime.EventsEmit(ctx, "kncloud:toast", map[string]string{"msg": accountErrToast(err), "type": "error"})
 		}
 		return
 	}

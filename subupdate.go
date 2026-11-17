@@ -81,6 +81,7 @@ func (a *App) runAutoSubUpdate() {
 		// 失败也记一次时间，避免每分钟重试刷屏；下个间隔再试
 		a.subLastAuto.Store(time.Now().Unix())
 		a.addLogInternal("warn", fmt.Sprintf("Auto subscription update failed: %v", err))
+		a.notifyDeviceRemoved(err)
 		return
 	}
 	a.addLogInternal("info", "Auto subscription update done")
