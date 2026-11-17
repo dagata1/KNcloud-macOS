@@ -329,6 +329,9 @@ func (a *App) startup(ctx context.Context) {
 	// 定时自动更新订阅（套餐/流量 + 节点），间隔见设置 subUpdateHours
 	go a.subAutoUpdateLoop()
 
+	// 设备直连上报：让面板按设备统计流量时认得出本机连节点用的 IP（见 devping.go）
+	go a.devicePingLoop()
+
 	// 登录过官网账户：启动时自动同步订阅节点
 	go func() {
 		time.Sleep(2 * time.Second)
