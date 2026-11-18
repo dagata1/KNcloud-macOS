@@ -212,6 +212,9 @@ func (a *App) coreConfigJSON(nodePtr *NodeItem) (string, error) {
 		rules = append(rules,
 			adsBlockRule(),
 			ruleObj{Type: "field", IP: []string{"geoip:private"}, OutboundTag: "direct"},
+			// geosite:cn 带了 google@cn 那批域名（fonts.gstatic.com、www.gstatic.com、fonts.googleapis.com…），
+			// 直连时 Gemini / Google Cloud 控制台的图标字体、脚本会加载失败或很慢；Google 一律先走代理。
+			ruleObj{Type: "field", Domain: []string{"geosite:google"}, OutboundTag: "proxy"},
 			ruleObj{Type: "field", Domain: []string{"geosite:cn"}, OutboundTag: "direct"},
 			ruleObj{Type: "field", IP: []string{"geoip:cn"}, OutboundTag: "direct"},
 			ruleObj{Type: "field", Network: "tcp,udp", OutboundTag: "proxy"},
