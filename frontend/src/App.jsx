@@ -142,6 +142,11 @@ export default function App() {
   };
 
   // 节点延迟的展示文字与配色（简易模式节点下拉用）
+  // 无节点时引导去官网购买套餐（面板购买页 /plan）
+  const openPlanPage = () => {
+    const base = ((account && account.domain) || 'https://www.kncloud.top').replace(/\/+$/, '');
+    BrowserOpenURL(base + '/plan');
+  };
   const delayText = d => d > 0 ? `${d}ms` : d === -2 ? tr('超时') : tr('未测');
   const delayColor = d => d > 0
     ? (d < 300 ? '#3fbf6f' : d < 800 ? '#e5a50a' : '#ff6b6b')
@@ -1488,7 +1493,12 @@ export default function App() {
           {/* 节点卡：固定单行，点击打开节点下拉（菜单以本容器为定位基准计算上下空间） */}
           <div className="sb-nodes">
             <div className="sb-card sb-node-list">
-              {nodes.length === 0 && <div className="sb-node-list-empty">{tr('暂无节点，请在普通模式中添加')}</div>}
+              {nodes.length === 0 && (
+                <div className="sb-node-list-empty">
+                  <div>{tr('暂无可用节点，请先购买套餐')}</div>
+                  <button type="button" className="sb-buy-btn" onClick={openPlanPage}>{tr('去购买')}</button>
+                </div>
+              )}
               {nodes.map(n => (
                 <button
                   type="button"
@@ -1884,7 +1894,10 @@ export default function App() {
                   </div>
                 </div>
                 {nodes.length === 0 ? (
-                  <div className="qp-empty">{tr('暂无节点，请先更新订阅或导入节点')}</div>
+                  <div className="qp-empty">
+                    {tr('暂无可用节点，请先购买套餐或导入节点')}
+                    <button type="button" className="sb-buy-btn" onClick={openPlanPage}>{tr('去购买')}</button>
+                  </div>
                 ) : (
                   <div className="qp-grid">
                     {quickPickNodes.map(node => (

@@ -2521,3 +2521,8 @@ select.win11-input option {
 /* 简洁模式：外层不显示滚动条（内容超高时仍可滚动） */
 .simple-body.sb-cards { scrollbar-width: none; }
 .simple-body.sb-cards::-webkit-scrollbar { display: none; }
+
+/* 无节点时的购买引导按钮 */
+.sb-node-list-empty, .qp-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.sb-buy-btn { padding: 6px 16px; border: none; border-radius: 8px; background: var(--accent, #3b82f6); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+.sb-buy-btn:hover { filter: brightness(1.08); }
