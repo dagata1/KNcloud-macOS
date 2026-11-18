@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"v2rayN-win11/internal/bootproxy"
 )
 
 const kncloudDefaultDomain = "https://www.KNcloud.top"
@@ -68,6 +71,7 @@ func (a *App) Logout() AccountInfo {
 
 // Login 登录 KNcloud 官网账户：换取 token → 拉取订阅地址与套餐 → 自动导入订阅节点
 func (a *App) Login(email, password string) (AccountInfo, error) {
+	defer a.bootSession()()
 	email = strings.TrimSpace(email)
 	if email == "" || password == "" {
 		return a.GetAccount(), fmt.Errorf("please enter email and password")
@@ -80,7 +84,7 @@ func (a *App) Login(email, password string) (AccountInfo, error) {
 		domain = kncloudDefaultDomain
 	}
 
-	token, err := v2boardLogin(domain, email, password)
+	token, err := a.panelLogin(domain, email, password)
 	if err != nil {
 		return a.GetAccount(), err
 	}
@@ -90,7 +94,8 @@ func (a *App) Login(email, password string) (AccountInfo, error) {
 // completeLogin 用已有凭证（auth_data）完成登录：拉取订阅地址与套餐 → 写入账户 → 导入订阅节点。
 // 密码登录与网页授权回传（weblogin.go）共用此入口。
 func (a *App) completeLogin(domain, email, token string) (AccountInfo, error) {
-	transfer, usedUp, usedDown, expire, planName, subURL, subEmail, err := v2boardGetSubscribe(domain, token)
+	defer a.bootSession()()
+	transfer, usedUp, usedDown, expire, planName, subURL, subEmail, err := a.panelGetSubscribe(domain, token)
 	if err != nil {
 		return a.GetAccount(), fmt.Errorf("login succeeded, but failed to fetch subscription: %v", err)
 	}
@@ -152,6 +157,7 @@ func (a *App) completeLogin(domain, email, token string) (AccountInfo, error) {
 
 // RefreshAccount 用登录凭证重新拉取套餐流量/到期信息；订阅地址变化时同步更新
 func (a *App) RefreshAccount() (AccountInfo, error) {
+	defer a.bootSession()()
 	a.mu.RLock()
 	loggedIn := a.account.LoggedIn
 	domain := a.account.Domain
@@ -164,7 +170,7 @@ func (a *App) RefreshAccount() (AccountInfo, error) {
 		return a.GetAccount(), fmt.Errorf("not logged in")
 	}
 
-	transfer, usedUp, usedDown, expire, planName, subURL, subEmail, err := v2boardGetSubscribe(domain, token)
+	transfer, usedUp, usedDown, expire, planName, subURL, subEmail, err := a.panelGetSubscribe(domain, token)
 	if err != nil {
 		if err == errTokenInvalid {
 			a.mu.Lock()
@@ -207,7 +213,82 @@ func (a *App) RefreshAccount() (AccountInfo, error) {
 
 // ------------------------- V2Board API -------------------------
 
-func v2boardLogin(domain, email, password string) (string, error) {
+// 官网账户接口（登录 / 拉订阅信息）直连官网；网络层失败（连不上 / 超时）时，配置了登录引导节点就
+// 临时经登录引导代理（127.0.0.1 随机端口，只给这里的 HTTP 客户端用，见 bootstrap.go）再试一次。
+// 本次登录 / 刷新流程里已经启用过引导代理则先走它。HTTP 错误、凭证失效不重试。
+const panelRequestTimeout = 15 * time.Second
+
+// panelNetError 标记网络层失败（可改走登录引导重试）。
+type panelNetError struct{ err error }
+
+func (e *panelNetError) Error() string { return e.err.Error() }
+func (e *panelNetError) Unwrap() error { return e.err }
+
+var panelDirectClient = func() *http.Client { return &http.Client{Timeout: panelRequestTimeout} }
+
+func withPanelRetry(a *App, fn func(*http.Client) error) error {
+	plan := panelAttemptPlan(a.bootPort() > 0, bootproxy.Enabled())
+	var err error
+	for _, useBoot := range plan {
+		var c *http.Client
+		if useBoot {
+			c, err = a.bootClient()
+		} else {
+			c = panelDirectClient()
+		}
+		if err == nil {
+			err = fn(c)
+		}
+		var ne *panelNetError
+		if err == nil || !errors.As(err, &ne) {
+			if useBoot && err == nil {
+				a.addLogInternal("info", "官网直连不通，已经登录引导节点连上官网")
+			}
+			return err
+		}
+		if useBoot {
+			a.addLogInternal("warn", fmt.Sprintf("登录引导节点也连不上官网：%v", err))
+		}
+	}
+	var ne *panelNetError
+	if errors.As(err, &ne) {
+		return ne.err
+	}
+	return err
+}
+
+// panelAttemptPlan 每次尝试是否走登录引导代理：直连一次，失败再经引导；引导已启用则先引导再直连。
+func panelAttemptPlan(bootActive, bootEnabled bool) []bool {
+	switch {
+	case bootActive:
+		return []bool{true, false}
+	case bootEnabled:
+		return []bool{false, true}
+	default:
+		return []bool{false}
+	}
+}
+
+func (a *App) panelLogin(domain, email, password string) (string, error) {
+	var token string
+	err := withPanelRetry(a, func(c *http.Client) error {
+		var e error
+		token, e = v2boardLogin(c, domain, email, password)
+		return e
+	})
+	return token, err
+}
+
+func (a *App) panelGetSubscribe(domain, token string) (transfer, usedUp, usedDown int64, expire, planName, subURL, email string, err error) {
+	err = withPanelRetry(a, func(c *http.Client) error {
+		var e error
+		transfer, usedUp, usedDown, expire, planName, subURL, email, e = v2boardGetSubscribe(c, domain, token)
+		return e
+	})
+	return
+}
+
+func v2boardLogin(client *http.Client, domain, email, password string) (string, error) {
 	domain = strings.TrimRight(domain, "/")
 	body, _ := json.Marshal(map[string]string{"email": email, "password": password})
 	req, err := http.NewRequest("POST", domain+"/api/v1/passport/auth/login", bytes.NewReader(body))
@@ -216,10 +297,9 @@ func v2boardLogin(domain, email, password string) (string, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("unable to connect to %s: %v", domain, err)
+		return "", &panelNetError{fmt.Errorf("unable to connect to %s: %v", domain, err)}
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -256,7 +336,7 @@ func v2boardLogin(domain, email, password string) (string, error) {
 // v2boardGetSubscribe 返回 (总流量, 已用上行, 已用下行, 到期描述, 套餐名, 订阅地址, 邮箱, err)
 var errTokenInvalid = fmt.Errorf("session expired, please log in again")
 
-func v2boardGetSubscribe(domain, token string) (int64, int64, int64, string, string, string, string, error) {
+func v2boardGetSubscribe(client *http.Client, domain, token string) (int64, int64, int64, string, string, string, string, error) {
 	domain = strings.TrimRight(domain, "/")
 	req, err := http.NewRequest("GET", domain+"/api/v1/user/getSubscribe", nil)
 	if err != nil {
@@ -264,10 +344,9 @@ func v2boardGetSubscribe(domain, token string) (int64, int64, int64, string, str
 	}
 	req.Header.Set("Authorization", token)
 
-	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, 0, 0, "", "", "", "", fmt.Errorf("unable to connect to %s: %v", domain, err)
+		return 0, 0, 0, "", "", "", "", &panelNetError{fmt.Errorf("unable to connect to %s: %v", domain, err)}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
@@ -341,5 +420,13 @@ func (a *App) SyncNodes() error {
 	if !loggedIn || subID == "" {
 		return fmt.Errorf("not logged into KNcloud account")
 	}
-	return a.refreshSubscription(subID)
+	defer a.bootSession()()
+	err := a.refreshSubscription(subID)
+	if err != nil && a.bootPort() == 0 && bootproxy.Enabled() {
+		// 经本地代理拉不到订阅（例如国内还没有可用节点）：临时经登录引导节点再拉一次
+		if _, berr := a.bootClient(); berr == nil {
+			err = a.refreshSubscription(subID)
+		}
+	}
+	return err
 }
