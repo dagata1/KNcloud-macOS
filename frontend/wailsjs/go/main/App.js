@@ -22,6 +22,10 @@ export function CopyNodeShareLink(arg1) {
   return window['go']['main']['App']['CopyNodeShareLink'](arg1);
 }
 
+export function CopyNodesShareLinks(arg1) {
+  return window['go']['main']['App']['CopyNodesShareLinks'](arg1);
+}
+
 export function DeleteNode(arg1) {
   return window['go']['main']['App']['DeleteNode'](arg1);
 }

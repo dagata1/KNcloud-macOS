@@ -28,6 +28,7 @@ import {
   UpdateNode,
   ImportNodesFromLinks,
   CopyNodeShareLink,
+  CopyNodesShareLinks,
   ImportNodesFromClipboard,
   Login,
   GetAccount,
@@ -918,14 +919,22 @@ export default function App() {
       if (tag === "input" || tag === "textarea" || tag === "select" || (t && t.isContentEditable)) return;
       e.preventDefault();
       if (key === "c") {
-        const cur = nodes.find(n => n.active);
-        if (!cur) {
+        // 有勾选的节点就复制勾选的（多个按列表顺序一行一个）；没勾选时才复制当前活动节点
+        const picked = selectedNodeIds.length > 0
+          ? nodes.filter(n => selectedNodeIds.includes(n.id))
+          : nodes.filter(n => n.active);
+        if (picked.length === 0) {
           showToast(tr("未选择节点，无法复制"), "error");
           return;
         }
         try {
-          await CopyNodeShareLink(cur.id);
-          showToast(tr('已复制「{name}」的分享链接到剪贴板', { name: cur.name }), "success");
+          if (picked.length === 1) {
+            await CopyNodeShareLink(picked[0].id);
+            showToast(tr('已复制「{name}」的分享链接到剪贴板', { name: picked[0].name }), "success");
+          } else {
+            const n = await CopyNodesShareLinks(picked.map(x => x.id));
+            showToast(tr('已复制 {n} 个节点的分享链接到剪贴板', { n }), "success");
+          }
         } catch (err) {
           showToast(tr("复制失败：") + (err?.message || err), "error");
         }

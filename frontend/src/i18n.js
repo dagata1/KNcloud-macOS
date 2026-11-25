@@ -81,6 +81,7 @@ export const en = {
   '已全选 {n} 个节点（按 Ctrl+R 批量测速）': 'Selected all {n} nodes (Ctrl+R to test)',
   '未选择节点，无法复制': 'No node selected to copy',
   '已复制「{name}」的分享链接到剪贴板': 'Copied share link of "{name}" to clipboard',
+  '已复制 {n} 个节点的分享链接到剪贴板': 'Copied share links of {n} nodes to clipboard',
   '复制失败：': 'Copy failed: ',
   '已从剪贴板导入 {n} 个节点': 'Imported {n} nodes from clipboard',
   '导入失败：': 'Import failed: ',

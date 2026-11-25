@@ -12,6 +12,8 @@ export function ClearLogs():Promise<void>;
 
 export function CopyNodeShareLink(arg1:string):Promise<boolean>;
 
+export function CopyNodesShareLinks(arg1:Array<string>):Promise<number>;
+
 export function DeleteNode(arg1:string):Promise<void>;
 
 export function DeleteNodes(arg1:Array<string>):Promise<void>;
